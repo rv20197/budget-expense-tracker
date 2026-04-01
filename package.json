@@ -14,7 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "cron": "tsx scripts/cron.ts"
+    "cron": "tsx scripts/cron.ts",
+    "db": "npm run db:generate && npm run db:migrate && npm run db:push"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.2.2",
