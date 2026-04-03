@@ -1,10 +1,12 @@
 "use client";
 
+import { useRouter, useSearchParams } from "next/navigation";
 import { useState } from "react";
 
 import { BulkDeleteBar } from "@/components/transactions/bulk-delete-bar";
 import { TransactionForm } from "@/components/transactions/transaction-form";
 import { TransactionTable } from "@/components/transactions/transaction-table";
+import { Pagination } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
 
 type TransactionsPageClientProps = Readonly<{
@@ -38,10 +40,20 @@ export function TransactionsPageClient({
   pageSize,
   exportHref,
 }: TransactionsPageClientProps) {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<TransactionsPageClientProps["items"][number] | null>(null);
+
+  const totalPages = Math.ceil(total / pageSize);
+
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams);
+    params.set("page", newPage.toString());
+    router.push(`/transactions?${params.toString()}`);
+  };
 
   return (
     <>
@@ -79,6 +91,13 @@ export function TransactionsPageClient({
           setIsModalOpen(true);
         }}
       />
+      <div className="mt-6 flex justify-center">
+        <Pagination
+          currentPage={page}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      </div>
       <TransactionForm
         open={isModalOpen}
         onClose={() => {
