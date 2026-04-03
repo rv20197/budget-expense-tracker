@@ -14,7 +14,7 @@ export function toMoneyString(value: Decimal.Value) {
   return toDecimal(value).toFixed(2);
 }
 
-export function formatCurrency(value: Decimal.Value, currency = "USD") {
+export function formatCurrency(value: Decimal.Value, currency = "INR") {
   return new Intl.NumberFormat("en-US", {
     style: "currency",
     currency,
