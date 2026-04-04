@@ -54,9 +54,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">{summary.monthLabel}</h2>
         </article>
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5 lg:col-span-1">
-          <p className="text-sm text-slate-500">Net</p>
+          <p className="text-sm text-slate-500">Net Inhand</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">
-            {Number(summary.income.replace(/[$,]/g, '')) - Number(summary.expense.replace(/[$,]/g, '')) > 0 ? '+' : ''}
             ₹{(Number(summary.income.replace(/[$,]/g, '')) - Number(summary.expense.replace(/[$,]/g, ''))).toFixed(2)}
           </h2>
         </article>
