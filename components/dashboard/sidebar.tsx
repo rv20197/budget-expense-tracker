@@ -52,7 +52,7 @@ export function Sidebar({ userName, isOpen = false, onClose }: SidebarProps) {
           );
         })}
       </nav>
-      <div className="mt-auto pt-6">
+      <div className="pt-6">
         <LogoutButton />
       </div>
     </div>
