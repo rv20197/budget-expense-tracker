@@ -43,11 +43,11 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm text-slate-500">Income</p>
-          <h2 className="mt-2 text-2xl font-semibold text-emerald-600 sm:text-3xl">{summary.income}</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-emerald-600 sm:text-3xl">₹{summary.income}</h2>
         </article>
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm text-slate-500">Expense</p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">{summary.expense}</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">₹{summary.expense}</h2>
         </article>
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm text-slate-500">Period</p>
@@ -57,7 +57,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <p className="text-sm text-slate-500">Net</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">
             {Number(summary.income.replace(/[$,]/g, '')) - Number(summary.expense.replace(/[$,]/g, '')) > 0 ? '+' : ''}
-            ${(Number(summary.income.replace(/[$,]/g, '')) - Number(summary.expense.replace(/[$,]/g, ''))).toFixed(2)}
+            ₹{(Number(summary.income.replace(/[$,]/g, '')) - Number(summary.expense.replace(/[$,]/g, ''))).toFixed(2)}
           </h2>
         </article>
       </div>
@@ -86,7 +86,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   <p className="text-sm text-slate-600 hidden sm:block">{item.categoryName} • {item.transactionDate}</p>
                   <p className="text-sm text-slate-600 sm:hidden">{item.transactionDate}</p>
                 </div>
-                <span className="font-semibold text-slate-950 ml-2">{item.amount}</span>
+                <span className="font-semibold text-slate-950 ml-2">₹{item.amount}</span>
               </div>
             ))}
           </div>
@@ -98,7 +98,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
               <div key={item.categoryName} className="rounded-2xl bg-slate-50 p-3 sm:p-4">
                 <div className="flex items-center justify-between mb-2">
                   <p className="font-medium text-slate-950 truncate text-sm sm:text-base">{item.categoryName}</p>
-                  <span className="text-xs sm:text-sm text-slate-600 whitespace-nowrap ml-2">{item.spentAmount} / {item.budgetAmount}</span>
+                  <span className="text-xs sm:text-sm text-slate-600 whitespace-nowrap ml-2">₹{item.spentAmount} / ₹{item.budgetAmount}</span>
                 </div>
                 <div className="h-3 rounded-full bg-slate-200">
                   <div className="h-3 rounded-full bg-slate-950" style={{ width: `${Math.min((Number(item.spentAmount) / Math.max(Number(item.budgetAmount), 1)) * 100, 100)}%` }} />
@@ -122,7 +122,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <p className="text-sm text-slate-500">Total I Owe</p>
             <h4 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-              {debtSummary.totalDebt}
+              ₹{debtSummary.totalDebt}
             </h4>
           </Link>
           <Link
@@ -131,7 +131,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <p className="text-sm text-slate-500">Total Owed to Me</p>
             <h4 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-              {debtSummary.totalLoan}
+              ₹{debtSummary.totalLoan}
             </h4>
           </Link>
           <Link
@@ -140,7 +140,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <p className="text-sm text-slate-500">Overdue Payments</p>
             <h4 className="mt-2 text-xl font-semibold text-red-600 sm:text-2xl">
-              {debtSummary.overdueCount}
+              ₹{debtSummary.overdueCount}
             </h4>
           </Link>
         </div>
