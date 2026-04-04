@@ -17,6 +17,16 @@ export default async function TransactionsPage({
   const search = typeof params.search === "string" ? params.search : undefined;
   const from = typeof params.from === "string" ? params.from : undefined;
   const to = typeof params.to === "string" ? params.to : undefined;
+  const sortBy =
+    typeof params.sortBy === "string" &&
+    ["description", "categoryName", "transactionDate", "amount"].includes(params.sortBy)
+      ? params.sortBy as "description" | "categoryName" | "transactionDate" | "amount"
+      : undefined;
+  const sortOrder =
+    typeof params.sortOrder === "string" &&
+    ["asc", "desc"].includes(params.sortOrder)
+      ? params.sortOrder as "asc" | "desc"
+      : undefined;
 
   const [categories, transactionData] = await Promise.all([
     getCategories(),
@@ -27,6 +37,8 @@ export default async function TransactionsPage({
       search,
       from,
       to,
+      sortBy,
+      sortOrder,
     }),
   ]);
 
@@ -94,6 +106,8 @@ export default async function TransactionsPage({
         total={transactionData.total}
         page={transactionData.page}
         pageSize={transactionData.pageSize}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
         exportHref={`/api/transactions/export?${exportParams.toString()}`}
       />
     </section>

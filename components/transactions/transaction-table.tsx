@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { Pencil, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, Pencil, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 import { deleteTransaction } from "@/lib/actions/transactions.actions";
@@ -9,6 +9,31 @@ import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
+
+type SortableHeaderProps = {
+  column: "description" | "categoryName" | "transactionDate" | "amount";
+  sortBy?: "description" | "categoryName" | "transactionDate" | "amount";
+  sortOrder?: "asc" | "desc";
+  onSort: (column: "description" | "categoryName" | "transactionDate" | "amount") => void;
+  children: React.ReactNode;
+};
+
+function SortableHeader({ column, sortBy, sortOrder, onSort, children }: SortableHeaderProps) {
+  const isActive = sortBy === column;
+  const Icon = isActive && sortOrder === "asc" ? ChevronUp : ChevronDown;
+
+  return (
+    <th className="px-4 py-3">
+      <button
+        onClick={() => onSort(column)}
+        className="flex items-center gap-1 hover:text-slate-950 transition-colors"
+      >
+        {children}
+        {isActive && <Icon className="h-4 w-4" />}
+      </button>
+    </th>
+  );
+}
 
 type TransactionItem = {
   id: string;
@@ -27,6 +52,9 @@ type TransactionTableProps = Readonly<{
   selectedIds: string[];
   onSelectionChange: (ids: string[]) => void;
   onEdit: (transaction: TransactionItem) => void;
+  sortBy?: "description" | "categoryName" | "transactionDate" | "amount";
+  sortOrder?: "asc" | "desc";
+  onSort: (column: "description" | "categoryName" | "transactionDate" | "amount") => void;
 }>;
 
 export function TransactionTable({
@@ -34,6 +62,9 @@ export function TransactionTable({
   selectedIds,
   onSelectionChange,
   onEdit,
+  sortBy,
+  sortOrder,
+  onSort,
 }: TransactionTableProps) {
   const [transactionToDelete, setTransactionToDelete] =
     useState<TransactionItem | null>(null);
@@ -64,10 +95,18 @@ export function TransactionTable({
                   }
                 />
               </th>
-              <th className="px-4 py-3">Description</th>
-              <th className="px-4 py-3">Category</th>
-              <th className="px-4 py-3">Date</th>
-              <th className="px-4 py-3">Amount</th>
+              <SortableHeader column="description" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort}>
+                Description
+              </SortableHeader>
+              <SortableHeader column="categoryName" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort}>
+                Category
+              </SortableHeader>
+              <SortableHeader column="transactionDate" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort}>
+                Date
+              </SortableHeader>
+              <SortableHeader column="amount" sortBy={sortBy} sortOrder={sortOrder} onSort={onSort}>
+                Amount
+              </SortableHeader>
               <th className="px-4 py-3 text-right">Actions</th>
             </tr>
           </thead>

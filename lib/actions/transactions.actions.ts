@@ -32,6 +32,8 @@ type TransactionFilters = {
   to?: string;
   page?: number;
   pageSize?: number;
+  sortBy?: "description" | "categoryName" | "transactionDate" | "amount";
+  sortOrder?: "asc" | "desc";
 };
 
 async function requireSession() {
@@ -81,7 +83,23 @@ export async function getTransactions(filters: TransactionFilters = {}) {
 
   const page = Math.max(filters.page ?? 1, 1);
   const pageSize = Math.min(Math.max(filters.pageSize ?? 10, 1), 50);
+  const sortBy = filters.sortBy ?? "transactionDate";
+  const sortOrder = filters.sortOrder ?? "desc";
   const where = and(...conditions);
+
+  // Build order by clause dynamically
+  const orderByClause = [];
+  if (sortBy === "description") {
+    orderByClause.push(sortOrder === "asc" ? transactions.description : desc(transactions.description));
+  } else if (sortBy === "categoryName") {
+    orderByClause.push(sortOrder === "asc" ? categories.name : desc(categories.name));
+  } else if (sortBy === "transactionDate") {
+    orderByClause.push(sortOrder === "asc" ? transactions.transactionDate : desc(transactions.transactionDate));
+  } else if (sortBy === "amount") {
+    orderByClause.push(sortOrder === "asc" ? transactions.amount : desc(transactions.amount));
+  }
+  // Add secondary sort by createdAt for consistent ordering
+  orderByClause.push(desc(transactions.createdAt));
 
   const [items, [{ total }]] = await Promise.all([
     db
@@ -99,7 +117,7 @@ export async function getTransactions(filters: TransactionFilters = {}) {
       .from(transactions)
       .innerJoin(categories, eq(categories.id, transactions.categoryId))
       .where(where)
-      .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
+      .orderBy(...orderByClause)
       .limit(pageSize)
       .offset((page - 1) * pageSize),
     db.select({ total: count() }).from(transactions).where(where),

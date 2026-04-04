@@ -29,6 +29,8 @@ type TransactionsPageClientProps = Readonly<{
   total: number;
   page: number;
   pageSize: number;
+  sortBy?: "description" | "categoryName" | "transactionDate" | "amount";
+  sortOrder?: "asc" | "desc";
   exportHref: string;
 }>;
 
@@ -38,6 +40,8 @@ export function TransactionsPageClient({
   total,
   page,
   pageSize,
+  sortBy,
+  sortOrder,
   exportHref,
 }: TransactionsPageClientProps) {
   const router = useRouter();
@@ -52,6 +56,24 @@ export function TransactionsPageClient({
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", newPage.toString());
+    router.push(`/transactions?${params.toString()}`);
+  };
+
+  const handleSort = (column: "description" | "categoryName" | "transactionDate" | "amount") => {
+    const params = new URLSearchParams(searchParams);
+    const currentSortBy = sortBy;
+    const currentSortOrder = sortOrder ?? "desc";
+
+    if (currentSortBy === column) {
+      // Toggle sort order if same column
+      params.set("sortOrder", currentSortOrder === "asc" ? "desc" : "asc");
+    } else {
+      // New column, default to desc
+      params.set("sortBy", column);
+      params.set("sortOrder", "desc");
+    }
+    // Reset to page 1 when sorting changes
+    params.set("page", "1");
     router.push(`/transactions?${params.toString()}`);
   };
 
@@ -90,6 +112,9 @@ export function TransactionsPageClient({
           setEditingTransaction(transaction);
           setIsModalOpen(true);
         }}
+        sortBy={sortBy}
+        sortOrder={sortOrder}
+        onSort={handleSort}
       />
       <div className="mt-6 flex justify-center">
         <Pagination
