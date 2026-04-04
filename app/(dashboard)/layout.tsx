@@ -13,13 +13,13 @@ export default async function DashboardLayout({
 }: DashboardLayoutProps) {
   await connection();
   const session = await getSession();
-
+  
   if (!session) {
     redirect("/login");
   }
 
   return (
-    <DashboardLayoutClient userName={session.user.name}>
+    <DashboardLayoutClient userName={session.user.name} email={session.user.email}>
       {children}
     </DashboardLayoutClient>
   );

@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { X, Wallet } from "lucide-react";
-import { useState } from "react";
 
 import { DASHBOARD_NAV_ITEMS } from "@/lib/constants";
 import { cn } from "@/lib/utils";

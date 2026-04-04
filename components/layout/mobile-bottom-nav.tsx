@@ -3,15 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  BarChart3,
   CreditCard,
   DollarSign,
   HandCoins,
   Home,
-  PieChart,
-  Settings,
-  Tag,
-  Timer,
 } from "lucide-react";
 
 import { cn } from "@/lib/utils";

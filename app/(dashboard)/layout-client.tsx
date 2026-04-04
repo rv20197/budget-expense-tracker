@@ -8,11 +8,13 @@ import { Sidebar } from "@/components/dashboard/sidebar";
 
 type DashboardLayoutClientProps = Readonly<{
   userName: string;
+  email: string;
   children: React.ReactNode;
 }>;
 
 export function DashboardLayoutClient({
   userName,
+  email,
   children,
 }: DashboardLayoutClientProps) {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -34,7 +36,7 @@ export function DashboardLayoutClient({
                     Welcome back, {userName}
                   </h1>
                 </div>
-                <p className="text-sm text-slate-600">user@example.com</p>
+                <p className="text-sm text-slate-600">{email}</p>
               </div>
             </header>
             {children}
