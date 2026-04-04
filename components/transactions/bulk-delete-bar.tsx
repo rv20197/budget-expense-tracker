@@ -26,8 +26,8 @@ export function BulkDeleteBar({ selectedIds, onClear }: BulkDeleteBarProps) {
       title={`Delete ${selectedIds.length} transaction${selectedIds.length > 1 ? "s" : ""}?`}
       description="This action cannot be undone."
     >
-      <div className="flex justify-end gap-3">
-        <Button variant="secondary" onClick={onClear}>
+      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+        <Button variant="secondary" onClick={onClear} className="w-full sm:w-auto">
           Cancel
         </Button>
         <Button
@@ -46,6 +46,7 @@ export function BulkDeleteBar({ selectedIds, onClear }: BulkDeleteBarProps) {
               onClear();
             })
           }
+          className="w-full sm:w-auto"
         >
           {isPending ? "Deleting..." : "Delete selected"}
         </Button>

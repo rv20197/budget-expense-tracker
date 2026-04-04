@@ -16,7 +16,7 @@ type SummaryBarChartProps = Readonly<{
 
 export function SummaryBarChart({ data }: SummaryBarChartProps) {
   return (
-    <div className="h-80 min-h-80 w-full min-w-0">
+    <div className="h-64 min-h-64 w-full min-w-0 sm:h-80 sm:min-h-80">
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />

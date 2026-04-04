@@ -42,8 +42,8 @@ export function ReassignModal({
           }))}
           placeholder="Select category"
         />
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
           <Button
@@ -65,6 +65,7 @@ export function ReassignModal({
                 onClose();
               })
             }
+            className="w-full sm:w-auto"
           >
             {isPending ? "Reassigning..." : "Reassign and delete"}
           </Button>

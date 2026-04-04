@@ -48,16 +48,23 @@ export default async function TransactionsPage({
 
   return (
     <section className="grid gap-6">
-      <form className="grid gap-4 rounded-[28px] border border-slate-200 bg-slate-50 p-5 md:grid-cols-5">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-slate-950 sm:text-2xl">Transactions</h1>
+          <p className="text-sm text-slate-600">Track and manage your financial transactions</p>
+        </div>
+      </div>
+
+      <form className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:flex-wrap sm:p-5">
         <input
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none min-h-[44px] sm:flex-1"
           type="search"
           name="search"
           placeholder="Search description"
           defaultValue={search}
         />
         <select
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none min-h-[44px] sm:w-auto"
           name="type"
           defaultValue={type}
         >
@@ -66,7 +73,7 @@ export default async function TransactionsPage({
           <option value="expense">Expense</option>
         </select>
         <select
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none min-h-[44px] sm:w-auto"
           name="categoryId"
           defaultValue={categoryId}
         >
@@ -78,19 +85,19 @@ export default async function TransactionsPage({
           ))}
         </select>
         <input
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none min-h-[44px] sm:w-auto"
           type="date"
           name="from"
           defaultValue={from}
         />
         <input
-          className="rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none"
+          className="w-full rounded-2xl border border-slate-200 px-4 py-3 text-sm outline-none min-h-[44px] sm:w-auto"
           type="date"
           name="to"
           defaultValue={to}
         />
         <button
-          className="rounded-2xl bg-slate-950 px-4 py-3 text-sm font-medium text-white md:col-span-5 md:justify-self-start"
+          className="w-full rounded-2xl bg-slate-950 px-4 py-3 text-sm font-medium text-white min-h-[44px] sm:w-auto sm:justify-self-start"
           type="submit"
         >
           Apply filters

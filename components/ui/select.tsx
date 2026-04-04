@@ -21,13 +21,13 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
     const selectId = id ?? props.name;
 
     return (
-      <label className="grid gap-2 text-sm text-slate-700" htmlFor={selectId}>
-        {label ? <span className="font-medium">{label}</span> : null}
+      <label className="block text-sm font-medium text-gray-700 mb-1" htmlFor={selectId}>
+        {label}
         <select
           ref={ref}
           id={selectId}
           className={cn(
-            "w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-900 outline-none transition focus:border-slate-400 focus:ring-4 focus:ring-slate-200/60",
+            "w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500",
             error && "border-red-400 focus:border-red-500 focus:ring-red-100",
             className,
           )}
@@ -40,7 +40,7 @@ export const Select = React.forwardRef<HTMLSelectElement, SelectProps>(
             </option>
           ))}
         </select>
-        {error ? <span className="text-xs text-red-600">{error}</span> : null}
+        {error ? <span className="text-xs text-red-600 mt-1 block">{error}</span> : null}
       </label>
     );
   },

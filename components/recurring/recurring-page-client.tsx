@@ -113,7 +113,7 @@ export function RecurringPageClient({
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">
             Recurring transactions
@@ -127,24 +127,25 @@ export function RecurringPageClient({
             setEditingItem(null);
             setIsModalOpen(true);
           }}
+          className="w-full sm:w-auto"
         >
           Add recurring item
         </Button>
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+      <div className="grid gap-4 lg:grid-cols-2">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <h3 className="text-lg font-semibold text-slate-950">Upcoming 30 days</h3>
           <div className="mt-4 grid gap-3">
             {upcoming.map((item) => (
               <div key={item.id} className="rounded-2xl bg-slate-50 p-4">
                 <div className="flex items-center justify-between gap-4">
-                  <div>
-                    <p className="font-medium text-slate-950">{item.description}</p>
+                  <div className="min-w-0">
+                    <p className="font-medium text-slate-950 truncate">{item.description}</p>
                     <p className="text-sm text-slate-600">
                       {item.frequency} due {item.nextDueDate}
                     </p>
                   </div>
-                  <span className="font-semibold text-slate-950">
+                  <span className="font-semibold text-slate-950 shrink-0">
                     {item.amount}
                   </span>
                 </div>
@@ -157,21 +158,21 @@ export function RecurringPageClient({
             ) : null}
           </div>
         </div>
-        <div className="rounded-[28px] border border-slate-200 bg-white p-5">
+        <div className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <h3 className="text-lg font-semibold text-slate-950">All recurring items</h3>
-          <div className="mt-4 grid gap-3">
+          <div className="mt-4 grid gap-3 max-h-96 overflow-y-auto">
             {all.map((item) => (
               <div
                 key={item.id}
                 className="flex items-start justify-between gap-4 rounded-2xl bg-slate-50 p-4"
               >
-                <div>
-                  <p className="font-medium text-slate-950">{item.description}</p>
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-slate-950 truncate">{item.description}</p>
                   <p className="text-sm text-slate-600">
                     {item.type} • {item.frequency} • next {item.nextDueDate}
                   </p>
                 </div>
-                <div className="flex gap-2">
+                <div className="flex gap-1 shrink-0">
                   <Button
                     variant="ghost"
                     onClick={() => {
@@ -215,7 +216,7 @@ export function RecurringPageClient({
         description="The cron worker will post due items into your transaction ledger."
       >
         <form className="grid gap-4" onSubmit={onSubmit}>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label="Type"
               options={[
@@ -238,7 +239,7 @@ export function RecurringPageClient({
             error={errors.description?.message}
             {...register("description")}
           />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Amount" error={errors.amount?.message} {...register("amount")} />
             <Select
               label="Frequency"
@@ -250,7 +251,7 @@ export function RecurringPageClient({
               {...register("frequency")}
             />
           </div>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Start date"
               type="date"
@@ -264,11 +265,11 @@ export function RecurringPageClient({
               {...register("nextDueDate")}
             />
           </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending ? "Saving..." : editingItem ? "Save changes" : "Create item"}
             </Button>
           </div>

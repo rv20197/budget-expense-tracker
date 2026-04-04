@@ -82,12 +82,12 @@ export function EditDebtModal({ open, debt, onClose }: EditDebtModalProps) {
             }),
           )}
         >
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Name" error={errors.name?.message} {...register("name")} />
             <Input label="Direction" value={debt.direction} disabled />
           </div>
           <Input label="Counterparty" error={errors.counterparty?.message} {...register("counterparty")} />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Principal" value={debt.principal} disabled />
             <Select
               label="Interest type"
@@ -107,7 +107,7 @@ export function EditDebtModal({ open, debt, onClose }: EditDebtModalProps) {
               {...register("interestRate")}
             />
           ) : null}
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Due date" type="date" error={errors.dueDate?.message} {...register("dueDate")} />
             <Input
               label="Next payment date"
@@ -122,11 +122,11 @@ export function EditDebtModal({ open, debt, onClose }: EditDebtModalProps) {
             {...register("installmentAmount")}
           />
           <Input label="Notes" error={errors.notes?.message} {...register("notes")} />
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={onClose}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending ? "Saving..." : "Save changes"}
             </Button>
           </div>

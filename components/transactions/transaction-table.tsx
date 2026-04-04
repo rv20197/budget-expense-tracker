@@ -80,7 +80,78 @@ export function TransactionTable({
 
   return (
     <>
-      <div className="overflow-hidden rounded-[28px] border border-slate-200">
+      {/* Mobile Card Layout */}
+      <div className="block md:hidden space-y-3">
+        {items.map((item) => {
+          const isSelected = selectedIds.includes(item.id);
+
+          return (
+            <div key={item.id} className="rounded-[20px] border border-slate-200 bg-white p-4">
+              <div className="flex items-start justify-between">
+                <div className="flex items-start gap-3">
+                  <input
+                    type="checkbox"
+                    checked={isSelected}
+                    onChange={(event) =>
+                      onSelectionChange(
+                        event.target.checked
+                          ? [...selectedIds, item.id]
+                          : selectedIds.filter((id) => id !== item.id),
+                      )
+                    }
+                    className="mt-1"
+                  />
+                  <div className="flex-1">
+                    <p className="font-medium text-slate-900">{item.description}</p>
+                    {item.notes && (
+                      <p className="mt-1 text-xs text-slate-500">{item.notes}</p>
+                    )}
+                    <div className="mt-2 flex items-center gap-2">
+                      <Badge
+                        className="border border-white/40"
+                        variant={item.type === "income" ? "success" : "neutral"}
+                      >
+                        <span
+                          className="mr-2 inline-block h-2 w-2 rounded-full"
+                          style={{ backgroundColor: item.categoryColor }}
+                        />
+                        {item.categoryName}
+                      </Badge>
+                      <span className="text-xs text-slate-500">{item.transactionDate}</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="flex flex-col items-end gap-2">
+                  <span
+                    className={
+                      item.type === "income"
+                        ? "font-semibold text-emerald-600"
+                        : "font-semibold text-slate-900"
+                    }
+                  >
+                    {item.type === "income" ? "+" : "-"}
+                    {formatCurrency(item.amount)}
+                  </span>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" onClick={() => onEdit(item)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      onClick={() => setTransactionToDelete(item)}
+                    >
+                      <Trash2 className="h-4 w-4 text-red-500" />
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Desktop Table Layout */}
+      <div className="hidden md:block overflow-hidden rounded-[28px] border border-slate-200">
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-50 text-left text-slate-600">
             <tr>

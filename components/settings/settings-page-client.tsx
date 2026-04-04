@@ -47,9 +47,13 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
 
   return (
     <section className="grid gap-6">
-      <div className="grid gap-6 xl:grid-cols-2">
+      <div>
+        <h1 className="text-xl font-bold text-slate-950 sm:text-2xl">Settings</h1>
+        <p className="text-sm text-slate-600">Manage your profile and account preferences</p>
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
         <form
-          className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-6"
+          className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-6"
           onSubmit={profileForm.handleSubmit((values) =>
             startProfileTransition(async () => {
               const result = await updateProfile(values);
@@ -64,7 +68,7 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
             }),
           )}
         >
-          <h2 className="text-xl font-semibold text-slate-950">Profile</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-950">Profile</h2>
           <Input
             label="Name"
             error={profileForm.formState.errors.name?.message}
@@ -76,12 +80,12 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
             error={profileForm.formState.errors.email?.message}
             {...profileForm.register("email")}
           />
-          <Button type="submit" disabled={isProfilePending}>
+          <Button type="submit" disabled={isProfilePending} className="w-full sm:w-auto">
             {isProfilePending ? "Saving..." : "Save profile"}
           </Button>
         </form>
         <form
-          className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-6"
+          className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-6"
           onSubmit={passwordForm.handleSubmit((values) =>
             startPasswordTransition(async () => {
               const result = await changePassword(values);
@@ -96,7 +100,7 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
             }),
           )}
         >
-          <h2 className="text-xl font-semibold text-slate-950">Change password</h2>
+          <h2 className="text-lg sm:text-xl font-semibold text-slate-950">Change password</h2>
           <Input
             label="Current password"
             type="password"
@@ -115,18 +119,18 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
             error={passwordForm.formState.errors.confirmPassword?.message}
             {...passwordForm.register("confirmPassword")}
           />
-          <Button type="submit" disabled={isPasswordPending}>
+          <Button type="submit" disabled={isPasswordPending} className="w-full sm:w-auto">
             {isPasswordPending ? "Updating..." : "Change password"}
           </Button>
         </form>
       </div>
-      <div className="rounded-[28px] border border-red-200 bg-red-50 p-6">
-        <h2 className="text-xl font-semibold text-red-800">Delete account</h2>
+      <div className="rounded-[28px] border border-red-200 bg-red-50 p-4 sm:p-6">
+        <h2 className="text-lg sm:text-xl font-semibold text-red-800">Delete account</h2>
         <p className="mt-2 text-sm text-red-700">
           Type DELETE to permanently remove your account and all related data.
         </p>
         <form
-          className="mt-4 flex flex-col gap-3 md:flex-row"
+          className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-end"
           onSubmit={async (event) => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
@@ -146,8 +150,10 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
             });
           }}
         >
-          <Input name="confirmation" placeholder="DELETE" />
-          <Button variant="danger" type="submit" disabled={isDeletePending}>
+          <div className="flex-1">
+            <Input name="confirmation" placeholder="DELETE" />
+          </div>
+          <Button variant="danger" type="submit" disabled={isDeletePending} className="w-full sm:w-auto">
             {isDeletePending ? "Deleting..." : "Delete account"}
           </Button>
         </form>

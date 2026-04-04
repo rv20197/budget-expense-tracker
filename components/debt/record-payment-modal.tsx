@@ -84,11 +84,11 @@ export function RecordPaymentModal({
           error={errors.note?.message}
           {...register("note")}
         />
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
             {isPending ? "Saving..." : "Record payment"}
           </Button>
         </div>

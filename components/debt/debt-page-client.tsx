@@ -83,18 +83,18 @@ export function DebtPageClient({
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Debt Management</h2>
           <p className="mt-1 text-sm text-slate-600">
             Track money you owe and money owed back to you without deleting history.
           </p>
         </div>
-        <Button onClick={() => setIsCreateOpen(true)}>Add Debt</Button>
+        <Button onClick={() => setIsCreateOpen(true)} className="w-full sm:w-auto">Add Debt</Button>
       </div>
       <DebtSummaryStrip {...summary} />
-      <div className="flex flex-wrap items-center gap-3 rounded-[28px] border border-slate-200 bg-slate-50 p-5">
-        <div className="inline-flex rounded-2xl bg-white p-1">
+      <div className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:flex-wrap sm:items-center sm:p-5">
+        <div className="inline-flex rounded-2xl bg-white p-1 w-full sm:w-auto">
           {[
             { label: "My Debts", value: "DEBT" },
             { label: "My Loans", value: "LOAN" },
@@ -102,7 +102,7 @@ export function DebtPageClient({
             <button
               key={item.value}
               type="button"
-              className={`rounded-2xl px-4 py-2 text-sm font-medium ${
+              className={`flex-1 sm:flex-none rounded-2xl px-4 py-2 text-sm font-medium transition ${
                 tab === item.value ? "bg-slate-950 text-white" : "text-slate-600"
               }`}
               onClick={() => setTab(item.value as "DEBT" | "LOAN")}
@@ -112,7 +112,7 @@ export function DebtPageClient({
           ))}
         </div>
         <select
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none min-h-[44px] sm:w-auto"
           value={statusFilter}
           onChange={(event) => setStatusFilter(event.target.value)}
         >
@@ -122,7 +122,7 @@ export function DebtPageClient({
           <option value="CANCELLED">Cancelled</option>
         </select>
         <select
-          className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm"
+          className="w-full rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm outline-none min-h-[44px] sm:w-auto"
           value={sortBy}
           onChange={(event) => setSortBy(event.target.value)}
         >
@@ -132,12 +132,12 @@ export function DebtPageClient({
         </select>
       </div>
       {filteredItems.length === 0 ? (
-        <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-12 text-center">
-          <h3 className="text-xl font-semibold text-slate-950">No debts yet</h3>
+        <div className="rounded-[28px] border border-dashed border-slate-300 bg-white p-8 sm:p-12 text-center">
+          <h3 className="text-lg sm:text-xl font-semibold text-slate-950">No debts yet</h3>
           <p className="mt-2 text-sm text-slate-600">
             Add your first debt to start tracking balances and payment history.
           </p>
-          <Button className="mt-5" onClick={() => setIsCreateOpen(true)}>
+          <Button className="mt-5 w-full sm:w-auto" onClick={() => setIsCreateOpen(true)}>
             Add your first debt
           </Button>
         </div>

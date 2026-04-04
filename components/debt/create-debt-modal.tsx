@@ -71,7 +71,7 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
           }),
         )}
       >
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Name" error={errors.name?.message} {...register("name")} />
           <Select
             label="Direction"
@@ -88,7 +88,7 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
           error={errors.counterparty?.message}
           {...register("counterparty")}
         />
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Principal"
             placeholder="0.00"
@@ -114,7 +114,7 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
             {...register("interestRate")}
           />
         ) : null}
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Input
             label="Due date"
             type="date"
@@ -140,11 +140,11 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
           error={errors.notes?.message}
           {...register("notes")}
         />
-        <div className="flex justify-end gap-3">
-          <Button variant="secondary" onClick={onClose}>
+        <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+          <Button variant="secondary" onClick={onClose} className="w-full sm:w-auto">
             Cancel
           </Button>
-          <Button type="submit" disabled={isPending}>
+          <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
             {isPending ? "Saving..." : "Create"}
           </Button>
         </div>

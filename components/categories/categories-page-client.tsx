@@ -108,7 +108,7 @@ export function CategoriesPageClient({
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Categories</h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -125,6 +125,7 @@ export function CategoriesPageClient({
             });
             setIsModalOpen(true);
           }}
+          className="w-full sm:w-auto"
         >
           Add category
         </Button>
@@ -134,7 +135,7 @@ export function CategoriesPageClient({
           <button
             key={value}
             type="button"
-            className={`rounded-2xl px-4 py-2 text-sm font-medium ${
+            className={`flex-1 sm:flex-none rounded-2xl px-4 py-2 text-sm font-medium transition ${
               tab === value
                 ? "bg-white text-slate-950 shadow"
                 : "text-slate-600"
@@ -145,21 +146,21 @@ export function CategoriesPageClient({
           </button>
         ))}
       </div>
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         {filteredCategories.map((category) => (
           <article
             key={category.id}
-            className="rounded-[28px] border border-slate-200 bg-white p-5"
+            className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5"
           >
             <div className="flex items-start justify-between gap-4">
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 flex-1">
                 <span
-                  className="inline-block h-4 w-4 rounded-full"
+                  className="inline-block h-4 w-4 rounded-full shrink-0"
                   style={{ backgroundColor: category.color }}
                 />
-                <div>
-                  <h3 className="font-semibold text-slate-950">{category.name}</h3>
-                  <div className="mt-2 flex gap-2">
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-slate-950 truncate">{category.name}</h3>
+                  <div className="mt-2 flex gap-2 flex-wrap">
                     <Badge
                       variant={category.type === "income" ? "success" : "neutral"}
                     >
@@ -171,7 +172,7 @@ export function CategoriesPageClient({
                   </div>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1 shrink-0">
                 <Button
                   variant="ghost"
                   onClick={() => {
@@ -229,7 +230,7 @@ export function CategoriesPageClient({
             error={errors.name?.message}
             {...register("name")}
           />
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 sm:grid-cols-2">
             <Select
               label="Type"
               options={[
@@ -246,11 +247,11 @@ export function CategoriesPageClient({
               {...register("color")}
             />
           </div>
-          <div className="flex justify-end gap-3">
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)}>
+          <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+            <Button variant="secondary" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto">
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending}>
+            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
               {isPending
                 ? "Saving..."
                 : editingCategory

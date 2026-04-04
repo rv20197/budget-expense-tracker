@@ -15,7 +15,7 @@ type RootLayoutProps = Readonly<{
 export default function RootLayout({ children }: RootLayoutProps) {
   return (
     <html lang="en">
-      <body>
+      <body className="min-h-screen flex flex-col bg-slate-100">
         <Suspense fallback={null}>{children}</Suspense>
         <Providers />
       </body>

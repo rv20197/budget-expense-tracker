@@ -29,14 +29,14 @@ export function DebtSummaryStrip({
   ];
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
       {cards.map((card) => (
         <article
           key={card.label}
-          className="rounded-[28px] border border-slate-200 bg-white p-5"
+          className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5"
         >
-          <p className="text-sm text-slate-500">{card.label}</p>
-          <h2 className={`mt-2 text-3xl font-semibold ${card.tone ?? "text-slate-950"}`}>
+          <p className="text-xs sm:text-sm text-slate-500">{card.label}</p>
+          <h2 className={`mt-2 text-2xl sm:text-3xl font-semibold ${card.tone ?? "text-slate-950"}`}>
             {card.value}
           </h2>
         </article>

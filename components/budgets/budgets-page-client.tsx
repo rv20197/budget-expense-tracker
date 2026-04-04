@@ -41,7 +41,7 @@ export function BudgetsPageClient({
 
   return (
     <section className="grid gap-6">
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h2 className="text-xl font-semibold text-slate-950">Budgets</h2>
           <p className="mt-1 text-sm text-slate-600">
@@ -62,23 +62,24 @@ export function BudgetsPageClient({
               toast.success(`Copied ${result.data.count} budgets forward.`);
             })
           }
+          className="w-full sm:w-auto"
         >
           {isPending ? "Copying..." : "Copy to next month"}
         </Button>
       </div>
       <OverBudgetBanner count={overBudgetCount} />
-      <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-5">
+      <div className="rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:p-5">
         <h3 className="text-sm font-semibold uppercase tracking-[0.25em] text-slate-500">
           Set budgets
         </h3>
-        <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2">
           {categories.map((category) => {
             const current = items.find((item) => item.categoryId === category.id);
 
             return (
               <form
                 key={category.id}
-                className="flex items-end gap-3 rounded-2xl bg-white p-4"
+                className="flex flex-col gap-3 rounded-2xl bg-white p-4 sm:flex-row sm:items-end"
                 action={async (formData) => {
                   const amount = formData.get("amount");
 
@@ -98,7 +99,7 @@ export function BudgetsPageClient({
                 }}
               >
                 <input type="hidden" name="categoryId" value={category.id} />
-                <div className="flex-1">
+                <div className="flex-1 w-full sm:w-auto">
                   <p className="mb-2 text-sm font-medium text-slate-900">
                     {category.name}
                   </p>
@@ -108,33 +109,36 @@ export function BudgetsPageClient({
                     placeholder="0.00"
                   />
                 </div>
-                <Button type="submit">Save</Button>
-                {current?.budgetId ? (
-                  <Button
-                    variant="ghost"
-                    type="button"
-                    onClick={() =>
-                      startTransition(async () => {
-                        const result = await deleteBudget(current.budgetId!);
+                <div className="flex gap-2 w-full sm:w-auto">
+                  <Button type="submit" className="flex-1 sm:flex-none">Save</Button>
+                  {current?.budgetId ? (
+                    <Button
+                      variant="ghost"
+                      type="button"
+                      className="flex-1 sm:flex-none"
+                      onClick={() =>
+                        startTransition(async () => {
+                          const result = await deleteBudget(current.budgetId!);
 
-                        if (!result.success) {
-                          toast.error(result.error);
-                          return;
-                        }
+                          if (!result.success) {
+                            toast.error(result.error);
+                            return;
+                          }
 
-                        toast.success(`${category.name} budget deleted.`);
-                      })
-                    }
-                  >
-                    Clear
-                  </Button>
-                ) : null}
+                          toast.success(`${category.name} budget deleted.`);
+                        })
+                      }
+                    >
+                      Clear
+                    </Button>
+                  ) : null}
+                </div>
               </form>
             );
           })}
         </div>
       </div>
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
           <BudgetCard key={item.categoryId} item={item} />
         ))}
