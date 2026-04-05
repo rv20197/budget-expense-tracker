@@ -1,6 +1,6 @@
 import "server-only";
 
-import { and, desc, eq, gte, lte, sql } from "drizzle-orm";
+import { and, desc, eq, gte, lte, or, sql } from "drizzle-orm";
 
 import { db } from "@/db";
 import { budgets, categories, transactions } from "@/db/schema";
@@ -11,8 +11,13 @@ import {
   toMoneyString,
 } from "@/lib/utils";
 
+type DashboardContext = {
+  householdId: string;
+  userId: string;
+};
+
 export async function getMonthlySummary(
-  userId: string,
+  context: DashboardContext,
   month: number,
   year: number,
 ) {
@@ -27,7 +32,7 @@ export async function getMonthlySummary(
       .from(transactions)
       .where(
         and(
-          eq(transactions.userId, userId),
+          eq(transactions.householdId, context.householdId),
           eq(transactions.type, "income"),
           gte(transactions.transactionDate, from),
           lte(transactions.transactionDate, to),
@@ -38,7 +43,7 @@ export async function getMonthlySummary(
       .from(transactions)
       .where(
         and(
-          eq(transactions.userId, userId),
+          eq(transactions.householdId, context.householdId),
           eq(transactions.type, "expense"),
           gte(transactions.transactionDate, from),
           lte(transactions.transactionDate, to),
@@ -46,24 +51,26 @@ export async function getMonthlySummary(
       ),
     db
       .select({
-        id: transactions.id,
-        description: transactions.description,
         amount: transactions.amount,
-        type: transactions.type,
-        transactionDate: transactions.transactionDate,
         categoryName: categories.name,
+        id: transactions.id,
+        transactionDate: transactions.transactionDate,
+        type: transactions.type,
+        description: transactions.description,
       })
       .from(transactions)
       .innerJoin(categories, eq(categories.id, transactions.categoryId))
-      .where(eq(transactions.userId, userId))
+      .where(eq(transactions.householdId, context.householdId))
       .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
       .limit(5),
     db
       .select({
-        categoryName: categories.name,
-        categoryColor: categories.color,
         budgetAmount: budgets.amount,
-        spentAmount: sql<string>`coalesce(sum(case when ${transactions.transactionDate} between ${from} and ${to} then ${transactions.amount} else 0 end), 0)`,
+        categoryColor: categories.color,
+        categoryName: categories.name,
+        scope: budgets.scope,
+        spentAmount:
+          sql<string>`coalesce(sum(case when ${transactions.transactionDate} between ${from} and ${to} then ${transactions.amount} else 0 end), 0)`,
       })
       .from(budgets)
       .innerJoin(categories, eq(categories.id, budgets.categoryId))
@@ -71,35 +78,43 @@ export async function getMonthlySummary(
         transactions,
         and(
           eq(transactions.categoryId, budgets.categoryId),
-          eq(transactions.userId, userId),
+          eq(transactions.householdId, context.householdId),
           eq(transactions.type, "expense"),
         ),
       )
       .where(
-        and(eq(budgets.userId, userId), eq(budgets.month, month), eq(budgets.year, year)),
+        and(
+          eq(budgets.householdId, context.householdId),
+          eq(budgets.month, month),
+          eq(budgets.year, year),
+          or(
+            eq(budgets.scope, "household"),
+            and(eq(budgets.scope, "personal"), eq(budgets.createdBy, context.userId)),
+          ),
+        ),
       )
       .groupBy(budgets.id, categories.id),
   ]);
 
   return {
-    monthLabel: formatMonthYear(month, year),
-    income: toMoneyString(incomeRow[0]?.total ?? "0"),
-    expense: toMoneyString(expenseRow[0]?.total ?? "0"),
-    recentTransactions: recentTransactions.map((item) => ({
-      ...item,
-      amount: toMoneyString(item.amount),
-      transactionDate: item.transactionDate.toISOString().slice(0, 10),
-    })),
     budgetRows: budgetRows.map((item) => ({
       ...item,
       budgetAmount: toMoneyString(item.budgetAmount),
       spentAmount: toMoneyString(item.spentAmount),
     })),
+    expense: toMoneyString(expenseRow[0]?.total ?? "0"),
+    income: toMoneyString(incomeRow[0]?.total ?? "0"),
+    monthLabel: formatMonthYear(month, year),
+    recentTransactions: recentTransactions.map((item) => ({
+      ...item,
+      amount: toMoneyString(item.amount),
+      transactionDate: item.transactionDate.toISOString().slice(0, 10),
+    })),
   };
 }
 
 export async function getCategoryBreakdown(
-  userId: string,
+  context: DashboardContext,
   from: string,
   to: string,
 ) {
@@ -107,15 +122,15 @@ export async function getCategoryBreakdown(
 
   const rows = await db
     .select({
-      categoryName: categories.name,
       categoryColor: categories.color,
+      categoryName: categories.name,
       total: sql<string>`coalesce(sum(${transactions.amount}), 0)`,
     })
     .from(transactions)
     .innerJoin(categories, eq(categories.id, transactions.categoryId))
     .where(
       and(
-        eq(transactions.userId, userId),
+        eq(transactions.householdId, context.householdId),
         eq(transactions.type, "expense"),
         gte(transactions.transactionDate, new Date(from)),
         lte(transactions.transactionDate, new Date(to)),
@@ -130,9 +145,8 @@ export async function getCategoryBreakdown(
   }));
 }
 
-export async function getTrend(userId: string, months = 6) {
+export async function getTrend(context: DashboardContext, months = 6) {
   "use cache";
-
   const results = [];
   const now = new Date();
 
@@ -149,7 +163,7 @@ export async function getTrend(userId: string, months = 6) {
         .from(transactions)
         .where(
           and(
-            eq(transactions.userId, userId),
+            eq(transactions.householdId, context.householdId),
             eq(transactions.type, "income"),
             gte(transactions.transactionDate, from),
             lte(transactions.transactionDate, to),
@@ -160,7 +174,7 @@ export async function getTrend(userId: string, months = 6) {
         .from(transactions)
         .where(
           and(
-            eq(transactions.userId, userId),
+            eq(transactions.householdId, context.householdId),
             eq(transactions.type, "expense"),
             gte(transactions.transactionDate, from),
             lte(transactions.transactionDate, to),
@@ -169,9 +183,9 @@ export async function getTrend(userId: string, months = 6) {
     ]);
 
     results.push({
-      label: formatMonthYear(month, year),
-      income: Number(incomeRow[0]?.total ?? "0"),
       expense: Number(expenseRow[0]?.total ?? "0"),
+      income: Number(incomeRow[0]?.total ?? "0"),
+      label: formatMonthYear(month, year),
     });
   }
 

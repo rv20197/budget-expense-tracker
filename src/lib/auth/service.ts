@@ -5,21 +5,17 @@ import crypto from "node:crypto";
 import { SignJWT } from "jose";
 import { and, eq, gt } from "drizzle-orm";
 
-import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { db } from "@/db";
 import {
-  categories,
+  householdMembers,
   refreshTokens,
   users,
-  type categoryTypeEnum,
 } from "@/db/schema";
 import { env } from "@/lib/env";
 import { comparePassword, hashPassword } from "@/lib/auth/password";
 import { checkRateLimit, resetRateLimit } from "@/lib/auth/rate-limit";
 import { verifyToken } from "@/lib/auth/jwt";
 import type { LoginInput, RegisterInput } from "@/features/auth/schemas/auth.schemas";
-
-type CategoryType = (typeof categoryTypeEnum.enumValues)[number];
 
 type TokenBundle = {
   accessToken: string;
@@ -32,6 +28,7 @@ type SessionUser = {
   id: string;
   name: string;
   email: string;
+  householdId: string | null;
 };
 
 type RefreshTokenPayload = {
@@ -74,13 +71,17 @@ async function signAccessToken(user: SessionUser) {
   const expiresAt = getExpiryDate(env.ACCESS_TOKEN_EXPIRES_IN);
   const token = await new SignJWT({
     email: user.email,
+    householdId: user.householdId,
     name: user.name,
     type: "access",
   })
     .setProtectedHeader({ alg: "HS256" })
     .setSubject(user.id)
+    .setJti(crypto.randomUUID())
     .setIssuedAt()
     .setExpirationTime(expiresAt)
+    .setAudience("budget-expense-tracker")
+    .setIssuer("budget-expense-tracker")
     .sign(new TextEncoder().encode(env.JWT_ACCESS_SECRET));
 
   return {
@@ -135,16 +136,37 @@ async function getUserByEmail(email: string) {
   return user ?? null;
 }
 
-async function seedDefaultCategories(userId: string) {
-  await db.insert(categories).values(
-    DEFAULT_CATEGORIES.map((category) => ({
-      userId,
-      name: category.name,
-      type: category.type as CategoryType,
-      color: category.color,
-      isDefault: true,
-    })),
-  );
+async function getHouseholdIdForUser(userId: string) {
+  const [membership] = await db
+    .select({ householdId: householdMembers.householdId })
+    .from(householdMembers)
+    .where(eq(householdMembers.userId, userId))
+    .limit(1);
+
+  return membership?.householdId ?? null;
+}
+
+async function buildSessionUser(userId: string): Promise<SessionUser> {
+  const [user, householdId] = await Promise.all([
+    db.select().from(users).where(eq(users.id, userId)).limit(1),
+    getHouseholdIdForUser(userId),
+  ]);
+
+  if (!user[0]) {
+    throw new Error("User not found.");
+  }
+
+  return {
+    id: user[0].id,
+    name: user[0].name,
+    email: user[0].email,
+    householdId,
+  };
+}
+
+export async function issueTokensForUser(userId: string) {
+  const user = await buildSessionUser(userId);
+  return createTokenBundle(user);
 }
 
 export async function registerUser(input: RegisterInput) {
@@ -170,18 +192,19 @@ export async function registerUser(input: RegisterInput) {
       passwordHash,
     })
     .returning();
-
-  await seedDefaultCategories(createdUser.id);
-
   const tokens = await createTokenBundle({
     id: createdUser.id,
     name: createdUser.name,
     email: createdUser.email,
+    householdId: null,
   });
 
   return {
     success: true as const,
-    user: createdUser,
+    user: {
+      ...createdUser,
+      householdId: null,
+    },
     tokens,
   };
 }
@@ -217,15 +240,20 @@ export async function loginUser(input: LoginInput, ipAddress: string) {
 
   resetRateLimit(ipAddress);
 
+  const householdId = await getHouseholdIdForUser(user.id);
   const tokens = await createTokenBundle({
     id: user.id,
     name: user.name,
     email: user.email,
+    householdId,
   });
 
   return {
     success: true as const,
-    user,
+    user: {
+      ...user,
+      householdId,
+    },
     tokens,
   };
 }
@@ -269,14 +297,13 @@ export async function refreshUserSession(refreshToken: string) {
 
   await db.delete(refreshTokens).where(eq(refreshTokens.id, tokenRecord.id));
 
-  const tokens = await createTokenBundle({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-  });
+  const tokens = await issueTokensForUser(user.id);
 
   return {
-    user,
+    user: {
+      ...user,
+      householdId: await getHouseholdIdForUser(user.id),
+    },
     tokens,
   };
 }

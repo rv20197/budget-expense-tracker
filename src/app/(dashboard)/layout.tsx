@@ -18,6 +18,10 @@ export default async function DashboardLayout({
     redirect("/login");
   }
 
+  if (!session.user.householdId) {
+    redirect("/onboarding");
+  }
+
   return (
     <DashboardLayoutClient userName={session.user.name} email={session.user.email}>
       {children}

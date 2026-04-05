@@ -7,6 +7,7 @@ type BudgetCardProps = Readonly<{
     categoryColor: string;
     budgetId: string | null;
     budgetAmount: string;
+    scope: "household" | "personal";
     spentAmount: string;
     remainingAmount: string;
     progress: number;
@@ -30,6 +31,9 @@ export function BudgetCard({ item }: BudgetCardProps) {
           style={{ backgroundColor: item.categoryColor }}
         />
         <h3 className="font-semibold text-slate-950">{item.categoryName}</h3>
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">
+          {item.scope === "household" ? "Shared" : "Personal"}
+        </span>
       </div>
       <div className="mt-4 flex items-end justify-between gap-4">
         <div>

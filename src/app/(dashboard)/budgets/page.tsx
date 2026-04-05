@@ -53,6 +53,7 @@ export default async function BudgetsPage({ searchParams }: BudgetsPageProps) {
         categories={categories.map((category) => ({
           id: category.id,
           name: category.name,
+          scope: category.scope,
         }))}
         items={items}
       />

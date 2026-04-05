@@ -10,5 +10,9 @@ export default async function SettingsPage() {
     redirect("/login");
   }
 
-  return <SettingsPageClient user={session.user} />;
+  if (!session.user.householdId) {
+    redirect("/onboarding");
+  }
+
+  return <SettingsPageClient user={session.user} hasHousehold={Boolean(session.user.householdId)} />;
 }

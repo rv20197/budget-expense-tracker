@@ -9,6 +9,7 @@ import { EditDebtModal } from "@/features/debts/components/edit-debt-modal";
 import { Button } from "@/components/ui/button";
 
 type DebtItem = {
+  addedByName: string;
   id: string;
   name: string;
   direction: "DEBT" | "LOAN";

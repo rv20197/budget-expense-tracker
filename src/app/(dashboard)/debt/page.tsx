@@ -5,16 +5,21 @@ import {
   getPayoffProjection,
 } from "@/features/debts/actions/debt.actions";
 import { getSession } from "@/lib/auth/session";
+import { redirect } from "next/navigation";
 
 export default async function DebtPage() {
   const session = await getSession();
 
   if (!session) {
-    return null;
+    redirect("/login");
+  }
+
+  if (!session.user.householdId) {
+    redirect("/onboarding");
   }
 
   const data = await getDebts();
-  const summary = await getDebtSummary(session.user.id);
+  const summary = await getDebtSummary(session.user.householdId);
   const allItems = [...data.debts, ...data.loans];
   const projectionEntries = await Promise.all(
     allItems.map(async (item) => [item.id, await getPayoffProjection(item.id)] as const),

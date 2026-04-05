@@ -1,14 +1,14 @@
 "use server";
 
-import { and, asc, desc, eq, lt, lte, gte, sql } from "drizzle-orm";
+import { and, asc, desc, eq, gte, lt, lte, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import Decimal from "decimal.js";
 import { ZodError } from "zod";
 
 import { unexpectedError, validationError } from "@/lib/action-helpers";
-import { getSession } from "@/lib/auth/session";
 import { db } from "@/db";
-import { debtPayments, debts } from "@/db/schema";
+import { debtPayments, debts, users } from "@/db/schema";
+import { getAuthContext } from "@/lib/auth/getUser";
 import type { ActionResult } from "@/lib/types/actions";
 import { addMonthsClamped, getDateString, toMoneyString } from "@/lib/utils";
 import {
@@ -20,10 +20,6 @@ import {
   type UpdateDebtInput,
 } from "@/features/debts/schemas/debt.schemas";
 
-async function requireSession() {
-  return getSession();
-}
-
 function revalidateDebtPaths() {
   revalidatePath("/debt");
   revalidatePath("/dashboard");
@@ -34,7 +30,7 @@ function decimal(value: Decimal.Value) {
 }
 
 function mapDebtRow(
-  row: typeof debts.$inferSelect,
+  row: typeof debts.$inferSelect & { addedByName: string },
   paymentTotal: string,
   payments: Array<typeof debtPayments.$inferSelect>,
 ) {
@@ -44,13 +40,11 @@ function mapDebtRow(
 
   return {
     ...row,
-    principal: toMoneyString(principal),
-    remainingBalance: toMoneyString(remainingBalance),
     amountPaid: toMoneyString(amountPaid),
-    interestRate: toMoneyString(row.interestRate),
     installmentAmount: row.installmentAmount
       ? toMoneyString(row.installmentAmount)
       : null,
+    interestRate: toMoneyString(row.interestRate),
     dueDate: row.dueDate ? getDateString(row.dueDate) : null,
     nextPaymentDate: row.nextPaymentDate ? getDateString(row.nextPaymentDate) : null,
     payments: payments.map((payment) => ({
@@ -58,6 +52,8 @@ function mapDebtRow(
       amount: toMoneyString(payment.amount),
       paidOn: getDateString(payment.paidOn),
     })),
+    principal: toMoneyString(principal),
+    remainingBalance: toMoneyString(remainingBalance),
   };
 }
 
@@ -105,18 +101,48 @@ function calculateProjection(
   };
 }
 
-export async function getDebts() {
-  const session = await requireSession();
+async function getDebtForHousehold(debtId: string, householdId: string) {
+  const [debt] = await db
+    .select()
+    .from(debts)
+    .where(and(eq(debts.id, debtId), eq(debts.householdId, householdId)))
+    .limit(1);
 
-  if (!session) {
+  return debt ?? null;
+}
+
+export async function getDebts() {
+  const auth = await getAuthContext().catch(() => null);
+
+  if (!auth) {
     return { debts: [], loans: [] };
   }
 
   const [debtRows, paymentTotals, payments] = await Promise.all([
     db
-      .select()
+      .select({
+        addedByName: users.name,
+        createdAt: debts.createdAt,
+        createdBy: debts.createdBy,
+        counterparty: debts.counterparty,
+        direction: debts.direction,
+        dueDate: debts.dueDate,
+        id: debts.id,
+        installmentAmount: debts.installmentAmount,
+        interestRate: debts.interestRate,
+        interestType: debts.interestType,
+        householdId: debts.householdId,
+        name: debts.name,
+        nextPaymentDate: debts.nextPaymentDate,
+        notes: debts.notes,
+        principal: debts.principal,
+        remainingBalance: debts.remainingBalance,
+        status: debts.status,
+        updatedAt: debts.updatedAt,
+      })
       .from(debts)
-      .where(eq(debts.userId, session.user.id))
+      .innerJoin(users, eq(users.id, debts.createdBy))
+      .where(eq(debts.householdId, auth.householdId))
       .orderBy(
         asc(
           sql`case when ${debts.status} = 'PAID' then 1 when ${debts.status} = 'CANCELLED' then 2 else 0 end`,
@@ -130,24 +156,30 @@ export async function getDebts() {
         total: sql<string>`coalesce(sum(${debtPayments.amount}), 0)`,
       })
       .from(debtPayments)
-      .where(eq(debtPayments.userId, session.user.id))
+      .innerJoin(debts, eq(debts.id, debtPayments.debtId))
+      .where(eq(debts.householdId, auth.householdId))
       .groupBy(debtPayments.debtId),
     db
       .select()
       .from(debtPayments)
-      .where(eq(debtPayments.userId, session.user.id))
+      .innerJoin(debts, eq(debts.id, debtPayments.debtId))
+      .where(eq(debts.householdId, auth.householdId))
       .orderBy(desc(debtPayments.paidOn), desc(debtPayments.createdAt)),
   ]);
 
   const paymentTotalsByDebt = new Map(
     paymentTotals.map((item) => [item.debtId, item.total]),
   );
-  const paymentsByDebt = new Map<string, Array<typeof debtPayments.$inferSelect>>();
+  const paymentsByDebt = new Map<
+    string,
+    Array<typeof debtPayments.$inferSelect>
+  >();
 
   for (const payment of payments) {
-    const list = paymentsByDebt.get(payment.debtId) ?? [];
-    list.push(payment);
-    paymentsByDebt.set(payment.debtId, list);
+    const item = payment.debt_payments;
+    const list = paymentsByDebt.get(item.debtId) ?? [];
+    list.push(item);
+    paymentsByDebt.set(item.debtId, list);
   }
 
   const mapped = debtRows.map((row) =>
@@ -167,14 +199,9 @@ export async function getDebts() {
 export async function createDebt(
   input: CreateDebtInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof CreateDebtInput, string>>> {
-  const session = await requireSession();
-
-  if (!session) {
-    return { success: false, error: "Unauthorized." };
-  }
-
   try {
     const payload = createDebtSchema.parse(input);
+    const { householdId, userId } = await getAuthContext();
     const principal = decimal(payload.principal);
     const interestType = payload.interestType;
     const interestRate =
@@ -183,22 +210,23 @@ export async function createDebt(
     const [createdDebt] = await db
       .insert(debts)
       .values({
-        userId: session.user.id,
-        name: payload.name,
-        direction: payload.direction,
         counterparty: payload.counterparty,
-        principal: toMoneyString(principal),
-        remainingBalance: toMoneyString(principal),
-        interestRate: toMoneyString(interestRate),
-        interestType,
+        createdBy: userId,
+        direction: payload.direction,
         dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
-        nextPaymentDate: payload.nextPaymentDate
-          ? new Date(payload.nextPaymentDate)
-          : null,
+        householdId,
         installmentAmount: payload.installmentAmount
           ? toMoneyString(payload.installmentAmount)
           : null,
+        interestRate: toMoneyString(interestRate),
+        interestType,
+        name: payload.name,
+        nextPaymentDate: payload.nextPaymentDate
+          ? new Date(payload.nextPaymentDate)
+          : null,
         notes: payload.notes || null,
+        principal: toMoneyString(principal),
+        remainingBalance: toMoneyString(principal),
       })
       .returning({ id: debts.id });
 
@@ -208,7 +236,7 @@ export async function createDebt(
   } catch (error) {
     return error instanceof ZodError
       ? validationError<Extract<keyof CreateDebtInput, string>>(error)
-      : unexpectedError("Unable to create debt.");
+      : unexpectedError(error instanceof Error ? error.message : "Unable to create debt.");
   }
 }
 
@@ -216,14 +244,9 @@ export async function updateDebt(
   debtId: string,
   input: UpdateDebtInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof UpdateDebtInput, string>>> {
-  const session = await requireSession();
-
-  if (!session) {
-    return { success: false, error: "Unauthorized." };
-  }
-
   try {
     const payload = updateDebtSchema.parse(input);
+    const { householdId } = await getAuthContext();
     const interestType = payload.interestType;
     const interestRate =
       interestType === "NONE" ? "0.00" : toMoneyString(payload.interestRate);
@@ -231,20 +254,20 @@ export async function updateDebt(
     const [updatedDebt] = await db
       .update(debts)
       .set({
-        name: payload.name,
         counterparty: payload.counterparty,
-        interestRate,
-        interestType,
         dueDate: payload.dueDate ? new Date(payload.dueDate) : null,
-        nextPaymentDate: payload.nextPaymentDate
-          ? new Date(payload.nextPaymentDate)
-          : null,
         installmentAmount: payload.installmentAmount
           ? toMoneyString(payload.installmentAmount)
           : null,
+        interestRate,
+        interestType,
+        name: payload.name,
+        nextPaymentDate: payload.nextPaymentDate
+          ? new Date(payload.nextPaymentDate)
+          : null,
         notes: payload.notes || null,
       })
-      .where(and(eq(debts.id, debtId), eq(debts.userId, session.user.id)))
+      .where(and(eq(debts.id, debtId), eq(debts.householdId, householdId)))
       .returning({ id: debts.id });
 
     if (!updatedDebt) {
@@ -257,7 +280,7 @@ export async function updateDebt(
   } catch (error) {
     return error instanceof ZodError
       ? validationError<Extract<keyof UpdateDebtInput, string>>(error)
-      : unexpectedError("Unable to update debt.");
+      : unexpectedError(error instanceof Error ? error.message : "Unable to update debt.");
   }
 }
 
@@ -265,19 +288,10 @@ export async function recordPayment(
   debtId: string,
   input: RecordPaymentInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof RecordPaymentInput, string>>> {
-  const session = await requireSession();
-
-  if (!session) {
-    return { success: false, error: "Unauthorized." };
-  }
-
   try {
     const payload = recordPaymentSchema.parse(input);
-    const [debt] = await db
-      .select()
-      .from(debts)
-      .where(and(eq(debts.id, debtId), eq(debts.userId, session.user.id)))
-      .limit(1);
+    const { householdId, userId } = await getAuthContext();
+    const debt = await getDebtForHousehold(debtId, householdId);
 
     if (!debt) {
       return { success: false, error: "Debt not found." };
@@ -316,20 +330,20 @@ export async function recordPayment(
       const [payment] = await tx
         .insert(debtPayments)
         .values({
-          debtId: debt.id,
-          userId: session.user.id,
           amount: toMoneyString(paymentAmount),
-          paidOn: new Date(payload.paidOn),
+          createdBy: userId,
+          debtId: debt.id,
           note: payload.note || null,
+          paidOn: new Date(payload.paidOn),
         })
         .returning({ id: debtPayments.id });
 
       await tx
         .update(debts)
         .set({
+          nextPaymentDate,
           remainingBalance: toMoneyString(nextRemainingBalance),
           status: nextStatus,
-          nextPaymentDate,
         })
         .where(eq(debts.id, debt.id));
 
@@ -342,16 +356,16 @@ export async function recordPayment(
   } catch (error) {
     return error instanceof ZodError
       ? validationError<Extract<keyof RecordPaymentInput, string>>(error)
-      : unexpectedError("Unable to record payment.");
+      : unexpectedError(error instanceof Error ? error.message : "Unable to record payment.");
   }
 }
 
 export async function cancelDebt(
   debtId: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireSession();
+  const auth = await getAuthContext().catch(() => null);
 
-  if (!session) {
+  if (!auth) {
     return { success: false, error: "Unauthorized." };
   }
 
@@ -360,7 +374,7 @@ export async function cancelDebt(
     .set({
       status: "CANCELLED",
     })
-    .where(and(eq(debts.id, debtId), eq(debts.userId, session.user.id)))
+    .where(and(eq(debts.id, debtId), eq(debts.householdId, auth.householdId)))
     .returning({ id: debts.id });
 
   if (!updatedDebt) {
@@ -375,16 +389,25 @@ export async function cancelDebt(
 export async function deletePayment(
   paymentId: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireSession();
+  const auth = await getAuthContext().catch(() => null);
 
-  if (!session) {
+  if (!auth) {
     return { success: false, error: "Unauthorized." };
   }
 
   const [payment] = await db
-    .select()
+    .select({
+      debtId: debtPayments.debtId,
+      id: debtPayments.id,
+    })
     .from(debtPayments)
-    .where(and(eq(debtPayments.id, paymentId), eq(debtPayments.userId, session.user.id)))
+    .innerJoin(debts, eq(debts.id, debtPayments.debtId))
+    .where(
+      and(
+        eq(debtPayments.id, paymentId),
+        eq(debts.householdId, auth.householdId),
+      ),
+    )
     .limit(1);
 
   if (!payment) {
@@ -392,14 +415,12 @@ export async function deletePayment(
   }
 
   const result = await db.transaction(async (tx) => {
-    await tx
-      .delete(debtPayments)
-      .where(and(eq(debtPayments.id, paymentId), eq(debtPayments.userId, session.user.id)));
+    await tx.delete(debtPayments).where(eq(debtPayments.id, paymentId));
 
     const [debt] = await tx
       .select()
       .from(debts)
-      .where(and(eq(debts.id, payment.debtId), eq(debts.userId, session.user.id)))
+      .where(and(eq(debts.id, payment.debtId), eq(debts.householdId, auth.householdId)))
       .limit(1);
 
     if (!debt) {
@@ -442,8 +463,21 @@ export async function deletePayment(
   return { success: true, data: result };
 }
 
-export async function getDebtSummary(userId: string) {
+export async function getDebtSummary(householdId?: string) {
   "use cache";
+
+  const auth = householdId
+    ? { householdId }
+    : await getAuthContext().catch(() => null);
+
+  if (!auth) {
+    return {
+      dueSoonCount: 0,
+      overdueCount: 0,
+      totalDebt: "0.00",
+      totalLoan: "0.00",
+    };
+  }
 
   const today = new Date();
   const nextWeek = addMonthsClamped(today, 0);
@@ -457,7 +491,7 @@ export async function getDebtSummary(userId: string) {
       .from(debts)
       .where(
         and(
-          eq(debts.userId, userId),
+          eq(debts.householdId, auth.householdId),
           eq(debts.direction, "DEBT"),
           eq(debts.status, "ACTIVE"),
         ),
@@ -469,7 +503,7 @@ export async function getDebtSummary(userId: string) {
       .from(debts)
       .where(
         and(
-          eq(debts.userId, userId),
+          eq(debts.householdId, auth.householdId),
           eq(debts.direction, "LOAN"),
           eq(debts.status, "ACTIVE"),
         ),
@@ -479,7 +513,7 @@ export async function getDebtSummary(userId: string) {
       .from(debts)
       .where(
         and(
-          eq(debts.userId, userId),
+          eq(debts.householdId, auth.householdId),
           eq(debts.status, "ACTIVE"),
           lt(debts.nextPaymentDate, today),
         ),
@@ -489,7 +523,7 @@ export async function getDebtSummary(userId: string) {
       .from(debts)
       .where(
         and(
-          eq(debts.userId, userId),
+          eq(debts.householdId, auth.householdId),
           eq(debts.status, "ACTIVE"),
           gte(debts.nextPaymentDate, today),
           lte(debts.nextPaymentDate, nextWeek),
@@ -498,25 +532,21 @@ export async function getDebtSummary(userId: string) {
   ]);
 
   return {
+    dueSoonCount: Number(dueSoonCount[0]?.count ?? 0),
+    overdueCount: Number(overdueCount[0]?.count ?? 0),
     totalDebt: toMoneyString(debtTotal[0]?.total ?? "0"),
     totalLoan: toMoneyString(loanTotal[0]?.total ?? "0"),
-    overdueCount: Number(overdueCount[0]?.count ?? 0),
-    dueSoonCount: Number(dueSoonCount[0]?.count ?? 0),
   };
 }
 
 export async function getPayoffProjection(debtId: string) {
-  const session = await requireSession();
+  const auth = await getAuthContext().catch(() => null);
 
-  if (!session) {
+  if (!auth) {
     return null;
   }
 
-  const [debt] = await db
-    .select()
-    .from(debts)
-    .where(and(eq(debts.id, debtId), eq(debts.userId, session.user.id)))
-    .limit(1);
+  const debt = await getDebtForHousehold(debtId, auth.householdId);
 
   if (!debt || !debt.installmentAmount) {
     return null;

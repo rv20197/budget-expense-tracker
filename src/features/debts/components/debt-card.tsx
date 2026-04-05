@@ -16,6 +16,7 @@ type DebtCardProps = Readonly<{
     id: string;
     name: string;
     direction: "DEBT" | "LOAN";
+    addedByName: string;
     counterparty: string;
     principal: string;
     remainingBalance: string;
@@ -84,6 +85,7 @@ export function DebtCard({ debt, projection, onEdit }: DebtCardProps) {
               {isDueSoon ? <Badge variant="warning">Due Soon</Badge> : null}
             </div>
             <p className="mt-2 text-sm text-slate-600">{debt.counterparty}</p>
+            <p className="mt-2 text-xs text-slate-500">Added by {debt.addedByName}</p>
             {debt.notes ? (
               <p className="mt-2 text-sm text-slate-500">{debt.notes}</p>
             ) : null}

@@ -1,13 +1,13 @@
 "use server";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 
 import { unexpectedError, validationError } from "@/lib/action-helpers";
-import { getSession } from "@/lib/auth/session";
 import { db } from "@/db";
 import { budgets, categories, transactions } from "@/db/schema";
+import { getAuthContext } from "@/lib/auth/getUser";
 import type { ActionResult } from "@/lib/types/actions";
 import {
   addMonthsClamped,
@@ -18,9 +18,7 @@ import {
 } from "@/lib/utils";
 import { budgetSchema, type BudgetInput } from "@/features/transactions/schemas/finance.schemas";
 
-async function requireSession() {
-  return getSession();
-}
+type RecordScope = "household" | "personal";
 
 function revalidateBudgetPaths() {
   revalidatePath("/budgets");
@@ -28,10 +26,52 @@ function revalidateBudgetPaths() {
   revalidatePath("/reports");
 }
 
-export async function getBudgets(month: number, year: number) {
-  const session = await requireSession();
+async function getVisibleCategory(categoryId: string, householdId: string, userId: string) {
+  const [category] = await db
+    .select()
+    .from(categories)
+    .where(
+      and(
+        eq(categories.id, categoryId),
+        eq(categories.householdId, householdId),
+        eq(categories.type, "expense"),
+        or(
+          eq(categories.scope, "household"),
+          and(eq(categories.scope, "personal"), eq(categories.createdBy, userId)),
+        ),
+      ),
+    )
+    .limit(1);
 
-  if (!session) {
+  return category ?? null;
+}
+
+async function getBudgetForMutation(
+  budgetId: string,
+  householdId: string,
+  userId: string,
+) {
+  const [budget] = await db
+    .select()
+    .from(budgets)
+    .where(and(eq(budgets.id, budgetId), eq(budgets.householdId, householdId)))
+    .limit(1);
+
+  if (!budget) {
+    return null;
+  }
+
+  if (budget.scope === "personal" && budget.createdBy !== userId) {
+    return null;
+  }
+
+  return budget;
+}
+
+export async function getBudgets(month: number, year: number) {
+  const auth = await getAuthContext().catch(() => null);
+
+  if (!auth) {
     return [];
   }
 
@@ -40,34 +80,41 @@ export async function getBudgets(month: number, year: number) {
 
   const rows = await db
     .select({
+      budgetAmount: budgets.amount,
+      budgetId: budgets.id,
+      categoryColor: categories.color,
       categoryId: categories.id,
       categoryName: categories.name,
-      categoryColor: categories.color,
-      budgetId: budgets.id,
-      budgetAmount: budgets.amount,
-      spentAmount: sql<string>`coalesce(sum(case when ${transactions.transactionDate} between ${monthStart} and ${monthEnd} then ${transactions.amount} else 0 end), 0)`,
+      createdBy: budgets.createdBy,
+      remainingAmount:
+        sql<string>`coalesce(${budgets.amount}, 0) - coalesce(sum(case when ${transactions.transactionDate} between ${monthStart} and ${monthEnd} then ${transactions.amount} else 0 end), 0)`,
+      scope: budgets.scope,
+      spentAmount:
+        sql<string>`coalesce(sum(case when ${transactions.transactionDate} between ${monthStart} and ${monthEnd} then ${transactions.amount} else 0 end), 0)`,
     })
-    .from(categories)
-    .leftJoin(
-      budgets,
-      and(
-        eq(budgets.categoryId, categories.id),
-        eq(budgets.userId, session.user.id),
-        eq(budgets.month, month),
-        eq(budgets.year, year),
-      ),
-    )
+    .from(budgets)
+    .innerJoin(categories, eq(categories.id, budgets.categoryId))
     .leftJoin(
       transactions,
       and(
-        eq(transactions.categoryId, categories.id),
-        eq(transactions.userId, session.user.id),
+        eq(transactions.categoryId, budgets.categoryId),
+        eq(transactions.householdId, auth.householdId),
         eq(transactions.type, "expense"),
       ),
     )
-    .where(and(eq(categories.userId, session.user.id), eq(categories.type, "expense")))
-    .groupBy(categories.id, budgets.id)
-    .orderBy(asc(categories.name));
+    .where(
+      and(
+        eq(budgets.householdId, auth.householdId),
+        eq(budgets.month, month),
+        eq(budgets.year, year),
+        or(
+          eq(budgets.scope, "household"),
+          and(eq(budgets.scope, "personal"), eq(budgets.createdBy, auth.userId)),
+        ),
+      ),
+    )
+    .groupBy(budgets.id, categories.id)
+    .orderBy(asc(categories.name), asc(budgets.scope));
 
   return rows.map((row) => {
     const budgetAmount = toDecimal(row.budgetAmount ?? "0");
@@ -78,52 +125,68 @@ export async function getBudgets(month: number, year: number) {
 
     return {
       ...row,
-      month,
-      year,
-      monthLabel: formatMonthYear(month, year),
       budgetAmount: toMoneyString(budgetAmount),
-      spentAmount: toMoneyString(spentAmount),
-      remainingAmount: toMoneyString(budgetAmount.minus(spentAmount)),
+      month,
+      monthLabel: formatMonthYear(month, year),
       progress,
       isOverBudget:
         spentAmount.greaterThanOrEqualTo(budgetAmount) &&
         budgetAmount.greaterThan(0),
+      remainingAmount: toMoneyString(budgetAmount.minus(spentAmount)),
+      spentAmount: toMoneyString(spentAmount),
+      year,
     };
   });
 }
 
 export async function upsertBudget(
   input: BudgetInput,
+  scope: RecordScope = "household",
 ): Promise<ActionResult<{ categoryId: string }, Extract<keyof BudgetInput, string>>> {
-  const session = await requireSession();
-
-  if (!session) {
-    return { success: false, error: "Unauthorized." };
-  }
-
   try {
     const payload = budgetSchema.parse(input);
+    const { householdId, userId } = await getAuthContext();
+    const category = await getVisibleCategory(payload.categoryId, householdId, userId);
 
-    await db
-      .insert(budgets)
-      .values({
-        userId: session.user.id,
-        categoryId: payload.categoryId,
-        month: payload.month,
-        year: payload.year,
+    if (!category) {
+      return { success: false, error: "Category not found." };
+    }
+
+    if (scope === "personal" && category.scope === "personal" && category.createdBy !== userId) {
+      return { success: false, error: "Category not found." };
+    }
+
+    const [existingBudget] = await db
+      .select({ id: budgets.id })
+      .from(budgets)
+      .where(
+        and(
+          eq(budgets.householdId, householdId),
+          eq(budgets.categoryId, payload.categoryId),
+          eq(budgets.month, payload.month),
+          eq(budgets.year, payload.year),
+          eq(budgets.scope, scope),
+          scope === "personal" ? eq(budgets.createdBy, userId) : undefined,
+        ),
+      )
+      .limit(1);
+
+    if (existingBudget) {
+      await db
+        .update(budgets)
+        .set({ amount: payload.amount })
+        .where(eq(budgets.id, existingBudget.id));
+    } else {
+      await db.insert(budgets).values({
         amount: payload.amount,
-      })
-      .onConflictDoUpdate({
-        target: [
-          budgets.userId,
-          budgets.categoryId,
-          budgets.month,
-          budgets.year,
-        ],
-        set: {
-          amount: payload.amount,
-        },
+        categoryId: payload.categoryId,
+        createdBy: userId,
+        householdId,
+        month: payload.month,
+        scope,
+        year: payload.year,
       });
+    }
 
     revalidateBudgetPaths();
 
@@ -131,27 +194,35 @@ export async function upsertBudget(
   } catch (error) {
     return error instanceof ZodError
       ? validationError<Extract<keyof BudgetInput, string>>(error)
-      : unexpectedError("Unable to save budget.");
+      : unexpectedError(
+          error instanceof Error ? error.message : "Unable to save budget.",
+        );
   }
 }
 
 export async function deleteBudget(
   budgetId: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireSession();
+  const auth = await getAuthContext().catch(() => null);
 
-  if (!session) {
+  if (!auth) {
     return { success: false, error: "Unauthorized." };
+  }
+
+  const budget = await getBudgetForMutation(
+    budgetId,
+    auth.householdId,
+    auth.userId,
+  );
+
+  if (!budget) {
+    return { success: false, error: "Budget not found." };
   }
 
   const [deletedBudget] = await db
     .delete(budgets)
-    .where(and(eq(budgets.id, budgetId), eq(budgets.userId, session.user.id)))
+    .where(eq(budgets.id, budgetId))
     .returning({ id: budgets.id });
-
-  if (!deletedBudget) {
-    return { success: false, error: "Budget not found." };
-  }
 
   revalidateBudgetPaths();
 
@@ -162,9 +233,9 @@ export async function copyBudgetsToNextMonth(
   month: number,
   year: number,
 ): Promise<ActionResult<{ count: number }>> {
-  const session = await requireSession();
+  const auth = await getAuthContext().catch(() => null);
 
-  if (!session) {
+  if (!auth) {
     return { success: false, error: "Unauthorized." };
   }
 
@@ -172,7 +243,15 @@ export async function copyBudgetsToNextMonth(
     .select()
     .from(budgets)
     .where(
-      and(eq(budgets.userId, session.user.id), eq(budgets.month, month), eq(budgets.year, year)),
+      and(
+        eq(budgets.householdId, auth.householdId),
+        eq(budgets.month, month),
+        eq(budgets.year, year),
+        or(
+          eq(budgets.scope, "household"),
+          and(eq(budgets.scope, "personal"), eq(budgets.createdBy, auth.userId)),
+        ),
+      ),
     );
 
   if (currentMonthBudgets.length === 0) {
@@ -184,26 +263,37 @@ export async function copyBudgetsToNextMonth(
   const nextYear = nextMonthDate.getFullYear();
 
   for (const budget of currentMonthBudgets) {
-    await db
-      .insert(budgets)
-      .values({
-        userId: session.user.id,
-        categoryId: budget.categoryId,
-        month: nextMonth,
-        year: nextYear,
+    const [existingBudget] = await db
+      .select({ id: budgets.id })
+      .from(budgets)
+      .where(
+        and(
+          eq(budgets.householdId, budget.householdId),
+          eq(budgets.categoryId, budget.categoryId),
+          eq(budgets.month, nextMonth),
+          eq(budgets.year, nextYear),
+          eq(budgets.scope, budget.scope),
+          budget.scope === "personal" ? eq(budgets.createdBy, auth.userId) : undefined,
+        ),
+      )
+      .limit(1);
+
+    if (existingBudget) {
+      await db
+        .update(budgets)
+        .set({ amount: budget.amount })
+        .where(eq(budgets.id, existingBudget.id));
+    } else {
+      await db.insert(budgets).values({
         amount: budget.amount,
-      })
-      .onConflictDoUpdate({
-        target: [
-          budgets.userId,
-          budgets.categoryId,
-          budgets.month,
-          budgets.year,
-        ],
-        set: {
-          amount: budget.amount,
-        },
+        categoryId: budget.categoryId,
+        createdBy: budget.createdBy,
+        householdId: budget.householdId,
+        month: nextMonth,
+        scope: budget.scope,
+        year: nextYear,
       });
+    }
   }
 
   revalidateBudgetPaths();

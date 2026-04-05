@@ -11,6 +11,7 @@ import {
   timestamp,
   uniqueIndex,
   uuid,
+  varchar,
 } from "drizzle-orm/pg-core";
 import { sql } from "drizzle-orm";
 
@@ -30,6 +31,8 @@ export const debtStatusEnum = pgEnum("debt_status", [
   "PAID",
   "CANCELLED",
 ]);
+export const recordScopeEnum = pgEnum("record_scope", ["household", "personal"]);
+export const householdRoleEnum = pgEnum("household_role", ["admin", "member"]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -70,13 +73,53 @@ export const refreshTokens = pgTable(
   ],
 );
 
+export const households = pgTable(
+  "households",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    name: varchar("name", { length: 100 }).notNull(),
+    inviteCode: varchar("invite_code", { length: 12 }).notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("households_invite_code_unique").on(table.inviteCode),
+  ],
+);
+
+export const householdMembers = pgTable(
+  "household_members",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    userId: uuid("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    role: householdRoleEnum("role").default("member").notNull(),
+    joinedAt: timestamp("joined_at", { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => [
+    uniqueIndex("household_members_user_id_unique").on(table.userId),
+    uniqueIndex("household_members_household_user_unique").on(
+      table.householdId,
+      table.userId,
+    ),
+    index("household_members_household_id_idx").on(table.householdId),
+  ],
+);
+
 export const categories = pgTable(
   "categories",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id")
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    scope: recordScopeEnum("scope").default("household").notNull(),
     name: text("name").notNull(),
     type: categoryTypeEnum("type").notNull(),
     color: text("color").default("#64748b").notNull(),
@@ -84,12 +127,14 @@ export const categories = pgTable(
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("categories_user_name_type_unique").on(
-      table.userId,
-      table.name,
-      table.type,
-    ),
-    index("categories_user_id_idx").on(table.userId),
+    uniqueIndex("categories_household_name_type_unique")
+      .on(table.householdId, table.name, table.type)
+      .where(sql`${table.scope} = 'household'`),
+    uniqueIndex("categories_personal_creator_name_type_unique")
+      .on(table.householdId, table.createdBy, table.name, table.type)
+      .where(sql`${table.scope} = 'personal'`),
+    index("categories_household_id_idx").on(table.householdId),
+    index("categories_created_by_idx").on(table.createdBy),
   ],
 );
 
@@ -97,9 +142,12 @@ export const transactions = pgTable(
   "transactions",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id")
+    householdId: uuid("household_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => households.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
     categoryId: uuid("category_id")
       .notNull()
       .references(() => categories.id, { onDelete: "restrict" }),
@@ -111,7 +159,8 @@ export const transactions = pgTable(
     ...timestamps,
   },
   (table) => [
-    index("transactions_user_id_idx").on(table.userId),
+    index("transactions_household_id_idx").on(table.householdId),
+    index("transactions_created_by_idx").on(table.createdBy),
     index("transactions_category_id_idx").on(table.categoryId),
     index("transactions_transaction_date_idx").on(table.transactionDate),
   ],
@@ -121,9 +170,13 @@ export const budgets = pgTable(
   "budgets",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id")
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
+    scope: recordScopeEnum("scope").default("household").notNull(),
     categoryId: uuid("category_id")
       .notNull()
       .references(() => categories.id, { onDelete: "cascade" }),
@@ -133,14 +186,10 @@ export const budgets = pgTable(
     ...timestamps,
   },
   (table) => [
-    uniqueIndex("budgets_user_category_month_year_unique").on(
-      table.userId,
-      table.categoryId,
-      table.month,
-      table.year,
-    ),
     check("budgets_month_check", sql`${table.month} between 1 and 12`),
-    index("budgets_user_id_idx").on(table.userId),
+    index("budgets_household_id_idx").on(table.householdId),
+    index("budgets_created_by_idx").on(table.createdBy),
+    index("budgets_category_id_idx").on(table.categoryId),
   ],
 );
 
@@ -176,9 +225,12 @@ export const debts = pgTable(
   "debts",
   {
     id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id")
+    householdId: uuid("household_id")
       .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
+      .references(() => households.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
     name: text("name").notNull(),
     direction: debtDirectionEnum("direction").notNull(),
     counterparty: text("counterparty").notNull(),
@@ -207,7 +259,8 @@ export const debts = pgTable(
     ...timestamps,
   },
   (table) => [
-    index("debts_user_id_idx").on(table.userId),
+    index("debts_household_id_idx").on(table.householdId),
+    index("debts_created_by_idx").on(table.createdBy),
     index("debts_status_idx").on(table.status),
     index("debts_direction_idx").on(table.direction),
   ],
@@ -220,7 +273,7 @@ export const debtPayments = pgTable(
     debtId: uuid("debt_id")
       .notNull()
       .references(() => debts.id, { onDelete: "cascade" }),
-    userId: uuid("user_id")
+    createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
@@ -232,13 +285,15 @@ export const debtPayments = pgTable(
   },
   (table) => [
     index("debt_payments_debt_id_idx").on(table.debtId),
-    index("debt_payments_user_id_idx").on(table.userId),
+    index("debt_payments_created_by_idx").on(table.createdBy),
     index("debt_payments_paid_on_idx").on(table.paidOn),
   ],
 );
 
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type Household = typeof households.$inferSelect;
+export type HouseholdMember = typeof householdMembers.$inferSelect;
 export type Category = typeof categories.$inferSelect;
 export type Transaction = typeof transactions.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;

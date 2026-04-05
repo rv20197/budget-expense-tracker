@@ -12,14 +12,26 @@ export default async function ReportsPage() {
     redirect("/login");
   }
 
+  if (!session.user.householdId) {
+    redirect("/onboarding");
+  }
+
   const current = getCurrentMonthYear();
-  const summary = await getMonthlySummary(session.user.id, current.month, current.year);
+  const dashboardContext = {
+    householdId: session.user.householdId,
+    userId: session.user.id,
+  };
+  const summary = await getMonthlySummary(
+    dashboardContext,
+    current.month,
+    current.year,
+  );
   const breakdown = await getCategoryBreakdown(
-    session.user.id,
+    dashboardContext,
     startOfMonth(current.month, current.year).toISOString().slice(0, 10),
     endOfMonth(current.month, current.year).toISOString().slice(0, 10),
   );
-  const trend = await getTrend(session.user.id, 6);
+  const trend = await getTrend(dashboardContext, 6);
 
   return (
     <section className="grid gap-6">

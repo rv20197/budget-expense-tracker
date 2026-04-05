@@ -15,6 +15,7 @@ const protectedPaths = [
 ];
 
 const authPaths = ["/login", "/register"];
+const onboardingPath = "/onboarding";
 
 function isProtectedPath(pathname: string) {
   return protectedPaths.some(
@@ -26,19 +27,25 @@ function isAuthPath(pathname: string) {
   return authPaths.some((path) => pathname === path || pathname.startsWith(`${path}/`));
 }
 
+function isOnboardingPath(pathname: string) {
+  return pathname === onboardingPath || pathname.startsWith(`${onboardingPath}/`);
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const accessToken = request.cookies.get(ACCESS_COOKIE_NAME)?.value;
   let hasValidSession = false;
+  let householdId: string | null = null;
 
   if (accessToken) {
     try {
-      const payload = await verifyToken<{ type: "access" }>(
+      const payload = await verifyToken<{ householdId?: string | null; type: "access" }>(
         accessToken,
         env.JWT_ACCESS_SECRET,
       );
 
       hasValidSession = payload.type === "access";
+      householdId = payload.householdId ?? null;
     } catch {
       hasValidSession = false;
     }
@@ -50,8 +57,22 @@ export async function proxy(request: NextRequest) {
     return NextResponse.redirect(loginUrl);
   }
 
-  if (isAuthPath(pathname) && hasValidSession) {
+  if (hasValidSession && isProtectedPath(pathname) && !householdId) {
+    return NextResponse.redirect(new URL("/onboarding", request.url));
+  }
+
+  if (isOnboardingPath(pathname) && !hasValidSession) {
+    return NextResponse.redirect(new URL("/login", request.url));
+  }
+
+  if (isOnboardingPath(pathname) && householdId) {
     return NextResponse.redirect(new URL("/dashboard", request.url));
+  }
+
+  if (isAuthPath(pathname) && hasValidSession) {
+    return NextResponse.redirect(
+      new URL(householdId ? "/dashboard" : "/onboarding", request.url),
+    );
   }
 
   return NextResponse.next();
@@ -66,6 +87,7 @@ export const config = {
     "/recurring/:path*",
     "/reports/:path*",
     "/settings/:path*",
+    "/onboarding/:path*",
     "/login",
     "/register",
   ],

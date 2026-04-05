@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useForm } from "react-hook-form";
@@ -25,9 +26,10 @@ type SettingsPageClientProps = Readonly<{
     name: string;
     email: string;
   };
+  hasHousehold: boolean;
 }>;
 
-export function SettingsPageClient({ user }: SettingsPageClientProps) {
+export function SettingsPageClient({ user, hasHousehold }: SettingsPageClientProps) {
   const router = useRouter();
   const [isProfilePending, startProfileTransition] = useTransition();
   const [isPasswordPending, startPasswordTransition] = useTransition();
@@ -123,6 +125,29 @@ export function SettingsPageClient({ user }: SettingsPageClientProps) {
             {isPasswordPending ? "Updating..." : "Change password"}
           </Button>
         </form>
+        {hasHousehold ? (
+          <article className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-6">
+            <div>
+              <h2 className="text-lg sm:text-xl font-semibold text-slate-950">
+                Family members
+              </h2>
+              <p className="mt-2 text-sm text-slate-600">
+                View the household group, check who has access, and share the invite code with family.
+              </p>
+            </div>
+            <div className="rounded-2xl bg-slate-50 p-4 text-sm text-slate-600">
+              Household data is shared across all members, so this is the place to manage your family budget group.
+            </div>
+            <div>
+              <Link
+                href="/settings/household"
+                className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-slate-950 px-4 py-3 text-sm font-medium text-white transition hover:bg-slate-800"
+              >
+                Open family members
+              </Link>
+            </div>
+          </article>
+        ) : null}
       </div>
       <div className="rounded-[28px] border border-red-200 bg-red-50 p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-red-800">Delete account</h2>

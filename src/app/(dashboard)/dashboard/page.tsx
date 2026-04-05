@@ -19,16 +19,24 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect("/login");
   }
 
+  if (!session.user.householdId) {
+    redirect("/onboarding");
+  }
+
   const params = (await searchParams) ?? {};
   const current = getCurrentMonthYear();
   const from = typeof params.from === "string" ? params.from : startOfMonth(current.month, current.year).toISOString().slice(0, 10);
   const to = typeof params.to === "string" ? params.to : endOfMonth(current.month, current.year).toISOString().slice(0, 10);
+  const dashboardContext = {
+    householdId: session.user.householdId,
+    userId: session.user.id,
+  };
 
   const [summary, breakdown, trend, debtSummary] = await Promise.all([
-    getMonthlySummary(session.user.id, current.month, current.year),
-    getCategoryBreakdown(session.user.id, from, to),
-    getTrend(session.user.id, 1),
-    getDebtSummary(session.user.id),
+    getMonthlySummary(dashboardContext, current.month, current.year),
+    getCategoryBreakdown(dashboardContext, from, to),
+    getTrend(dashboardContext, 1),
+    getDebtSummary(session.user.householdId),
   ]);
 
   return (

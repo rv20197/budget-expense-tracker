@@ -41,6 +41,7 @@ function SortableHeader({ column, sortBy, sortOrder, onSort, children }: Sortabl
 }
 
 type TransactionItem = {
+  addedByName: string;
   id: string;
   description: string;
   amount: string;
@@ -124,6 +125,9 @@ export function TransactionTable({
                       </Badge>
                       <span className="text-xs text-slate-500">{item.transactionDate}</span>
                     </div>
+                    <p className="mt-2 text-xs text-slate-500">
+                      Added by {item.addedByName}
+                    </p>
                   </div>
                 </div>
                 <div className="flex flex-col items-end gap-2">
@@ -212,6 +216,9 @@ export function TransactionTable({
                     {item.notes ? (
                       <p className="mt-1 text-xs text-slate-500">{item.notes}</p>
                     ) : null}
+                    <p className="mt-2 text-xs text-slate-500">
+                      Added by {item.addedByName}
+                    </p>
                   </td>
                   <td className="px-4 py-4 align-top">
                     <Badge

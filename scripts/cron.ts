@@ -4,7 +4,11 @@ import cron from "node-cron";
 import { and, eq, lte } from "drizzle-orm";
 
 import { db, pool } from "../src/db";
-import { recurringTransactions, transactions } from "../src/db/schema";
+import {
+  householdMembers,
+  recurringTransactions,
+  transactions,
+} from "../src/db/schema";
 import {
   addMonthsClamped,
   addYearsClamped,
@@ -31,13 +35,23 @@ async function processRecurringTransactions() {
 
   for (const item of dueItems) {
     const nextDueDate = getNextDueDate(item.nextDueDate, item.frequency);
+    const [membership] = await db
+      .select({ householdId: householdMembers.householdId })
+      .from(householdMembers)
+      .where(eq(householdMembers.userId, item.userId))
+      .limit(1);
+
+    if (!membership) {
+      continue;
+    }
 
     await db.transaction(async (tx) => {
       await tx.insert(transactions).values({
-        userId: item.userId,
         categoryId: item.categoryId,
+        createdBy: item.userId,
         type: item.type,
         description: item.description,
+        householdId: membership.householdId,
         amount: item.amount,
         transactionDate: item.nextDueDate,
         notes: item.notes,

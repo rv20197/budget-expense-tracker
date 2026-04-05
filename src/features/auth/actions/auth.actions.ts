@@ -38,7 +38,7 @@ export async function registerAction(
     return {
       success: true,
       data: {
-        redirectTo: "/dashboard",
+        redirectTo: result.user.householdId ? "/dashboard" : "/onboarding",
       },
     };
   } catch (error) {
@@ -71,7 +71,7 @@ export async function loginAction(
     return {
       success: true,
       data: {
-        redirectTo: "/dashboard",
+        redirectTo: result.user.householdId ? "/dashboard" : "/onboarding",
       },
     };
   } catch (error) {

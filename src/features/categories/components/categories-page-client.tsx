@@ -23,7 +23,9 @@ import { ReassignModal } from "@/features/categories/components/reassign-modal";
 import { generateRandomHexColor } from "@/lib/utils";
 
 type CategoryRow = {
+  createdBy: string;
   id: string;
+  scope: "household" | "personal";
   name: string;
   type: "income" | "expense";
   color: string;
@@ -41,6 +43,7 @@ export function CategoriesPageClient({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingCategory, setEditingCategory] = useState<CategoryRow | null>(null);
   const [reassignCategory, setReassignCategory] = useState<CategoryRow | null>(null);
+  const [scope, setScope] = useState<"household" | "personal">("household");
   const [isPending, startTransition] = useTransition();
 
   const {
@@ -70,7 +73,7 @@ export function CategoriesPageClient({
     startTransition(async () => {
       const result = editingCategory
         ? await updateCategory(editingCategory.id, values)
-        : await createCategory(values);
+        : await createCategory(values, scope);
 
       if (!result.success) {
         toast.error(result.error);
@@ -87,6 +90,7 @@ export function CategoriesPageClient({
         type: tab,
         color: generateRandomHexColor(),
       });
+      setScope("household");
       clearErrors();
     });
   });
@@ -108,6 +112,7 @@ export function CategoriesPageClient({
               type: tab,
               color: generateRandomHexColor(),
             });
+            setScope("household");
             clearErrors();
             setIsModalOpen(true);
           }}
@@ -163,6 +168,9 @@ export function CategoriesPageClient({
                     {category.isDefault ? (
                       <Badge variant="warning">Default</Badge>
                     ) : null}
+                    <Badge variant={category.scope === "household" ? "success" : "neutral"}>
+                      {category.scope === "household" ? "Shared" : "Personal"}
+                    </Badge>
                   </div>
                 </div>
               </div>
@@ -176,6 +184,7 @@ export function CategoriesPageClient({
                       type: category.type,
                       color: category.color,
                     });
+                    setScope(category.scope);
                     clearErrors();
                     setIsModalOpen(true);
                   }}
@@ -220,6 +229,7 @@ export function CategoriesPageClient({
             type: tab,
             color: generateRandomHexColor(),
           });
+          setScope("household");
           clearErrors();
         }}
         title={editingCategory ? "Edit category" : "Add category"}
@@ -255,6 +265,49 @@ export function CategoriesPageClient({
               {...register("color")}
             />
           </div>
+          {!editingCategory ? (
+            <div className="grid gap-2">
+              <p className="text-sm font-medium text-slate-900">Visibility</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-3 text-sm">
+                  <input
+                    checked={scope === "household"}
+                    className="mt-1"
+                    name="scope"
+                    onChange={() => setScope("household")}
+                    type="radio"
+                    value="household"
+                  />
+                  <span>
+                    <span className="block font-medium text-slate-950">
+                      Shared with family
+                    </span>
+                    <span className="text-slate-600">
+                      Everyone in the household can see and use it.
+                    </span>
+                  </span>
+                </label>
+                <label className="flex cursor-pointer items-start gap-3 rounded-2xl border border-slate-200 p-3 text-sm">
+                  <input
+                    checked={scope === "personal"}
+                    className="mt-1"
+                    name="scope"
+                    onChange={() => setScope("personal")}
+                    type="radio"
+                    value="personal"
+                  />
+                  <span>
+                    <span className="block font-medium text-slate-950">
+                      Personal
+                    </span>
+                    <span className="text-slate-600">
+                      Only you will see this category in forms and lists.
+                    </span>
+                  </span>
+                </label>
+              </div>
+            </div>
+          ) : null}
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
             <Button
               type="button"
@@ -267,6 +320,7 @@ export function CategoriesPageClient({
                   type: tab,
                   color: generateRandomHexColor(),
                 });
+                setScope("household");
                 clearErrors();
               }}
               className="w-full sm:w-auto"

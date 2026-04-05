@@ -1,12 +1,12 @@
 import { and, eq, gte, lte } from "drizzle-orm";
 import { NextResponse } from "next/server";
 
-import { getSession } from "@/lib/auth/session";
 import { db } from "@/db";
 import { categories, transactions } from "@/db/schema";
+import { getAuthContext } from "@/lib/auth/getUser";
 
 export async function GET(request: Request) {
-  const session = await getSession();
+  const session = await getAuthContext().catch(() => null);
 
   if (!session) {
     return NextResponse.json({ success: false, error: "Unauthorized." }, { status: 401 });
@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const from = searchParams.get("from");
   const to = searchParams.get("to");
 
-  const conditions = [eq(transactions.userId, session.user.id)];
+  const conditions = [eq(transactions.householdId, session.householdId)];
 
   if (from) {
     conditions.push(gte(transactions.transactionDate, new Date(from)));

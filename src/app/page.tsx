@@ -7,5 +7,9 @@ export default async function HomePage() {
   await connection();
   const session = await getSession();
 
-  redirect(session ? "/dashboard" : "/login");
+  if (!session) {
+    redirect("/login");
+  }
+
+  redirect(session.user.householdId ? "/dashboard" : "/onboarding");
 }

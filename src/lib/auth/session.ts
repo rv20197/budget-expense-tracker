@@ -11,12 +11,14 @@ export type Session = {
     id: string;
     email: string;
     name: string;
+    householdId: string | null;
   };
 };
 
 type AccessTokenPayload = {
   sub: string;
   email: string;
+  householdId?: string | null;
   name: string;
   type: "access";
 };
@@ -43,6 +45,7 @@ export async function getSession(): Promise<Session | null> {
       user: {
         id: payload.sub,
         email: payload.email,
+        householdId: payload.householdId ?? null,
         name: payload.name,
       },
     };

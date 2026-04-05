@@ -1,26 +1,20 @@
 "use server";
 
-import { and, asc, eq, sql } from "drizzle-orm";
+import { and, asc, eq, or, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { ZodError } from "zod";
 
 import { unexpectedError, validationError } from "@/lib/action-helpers";
-import { getSession } from "@/lib/auth/session";
 import { db } from "@/db";
 import { categories, transactions } from "@/db/schema";
+import { getAuthContext } from "@/lib/auth/getUser";
 import type { ActionResult } from "@/lib/types/actions";
 import {
   categorySchema,
   type CategoryInput,
 } from "@/features/transactions/schemas/finance.schemas";
 
-async function requireSession() {
-  const session = await getSession();
-  if (!session) {
-    return null;
-  }
-  return session;
-}
+type RecordScope = "household" | "personal";
 
 function revalidateCategoryPaths() {
   revalidatePath("/categories");
@@ -30,10 +24,22 @@ function revalidateCategoryPaths() {
   revalidatePath("/reports");
 }
 
-export async function getCategories(type?: "income" | "expense") {
-  const session = await requireSession();
+async function getCategoryForMutation(categoryId: string, householdId: string) {
+  const [category] = await db
+    .select()
+    .from(categories)
+    .where(
+      and(eq(categories.id, categoryId), eq(categories.householdId, householdId)),
+    )
+    .limit(1);
 
-  if (!session) {
+  return category ?? null;
+}
+
+export async function getCategories(type?: "income" | "expense") {
+  const auth = await getAuthContext().catch(() => null);
+
+  if (!auth) {
     return [];
   }
 
@@ -41,31 +47,35 @@ export async function getCategories(type?: "income" | "expense") {
     .select()
     .from(categories)
     .where(
-      type
-        ? and(eq(categories.userId, session.user.id), eq(categories.type, type))
-        : eq(categories.userId, session.user.id),
+      and(
+        eq(categories.householdId, auth.householdId),
+        or(
+          eq(categories.scope, "household"),
+          and(eq(categories.scope, "personal"), eq(categories.createdBy, auth.userId)),
+        ),
+        type ? eq(categories.type, type) : undefined,
+      ),
     )
     .orderBy(asc(categories.type), asc(categories.name));
 }
 
 export async function createCategory(
   input: CategoryInput,
+  scope: RecordScope = "household",
 ): Promise<ActionResult<{ id: string }, Extract<keyof CategoryInput, string>>> {
-  const session = await requireSession();
-
-  if (!session) {
-    return { success: false, error: "Unauthorized." };
-  }
-
   try {
     const payload = categorySchema.parse(input);
+    const { householdId, userId } = await getAuthContext();
+
     const [createdCategory] = await db
       .insert(categories)
       .values({
-        userId: session.user.id,
-        name: payload.name,
-        type: payload.type,
         color: payload.color,
+        createdBy: userId,
+        householdId,
+        name: payload.name,
+        scope,
+        type: payload.type,
       })
       .returning({ id: categories.id });
 
@@ -75,7 +85,9 @@ export async function createCategory(
   } catch (error) {
     return error instanceof ZodError
       ? validationError<Extract<keyof CategoryInput, string>>(error)
-      : unexpectedError("Unable to create category.");
+      : unexpectedError(
+          error instanceof Error ? error.message : "Unable to create category.",
+        );
   }
 }
 
@@ -83,27 +95,31 @@ export async function updateCategory(
   categoryId: string,
   input: CategoryInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof CategoryInput, string>>> {
-  const session = await requireSession();
-
-  if (!session) {
-    return { success: false, error: "Unauthorized." };
-  }
-
   try {
     const payload = categorySchema.parse(input);
+    const { householdId, userId } = await getAuthContext();
+    const category = await getCategoryForMutation(categoryId, householdId);
+
+    if (!category) {
+      return { success: false, error: "Category not found." };
+    }
+
+    if (category.scope === "personal" && category.createdBy !== userId) {
+      return {
+        success: false,
+        error: "Cannot edit another member's personal category.",
+      };
+    }
+
     const [updatedCategory] = await db
       .update(categories)
       .set({
+        color: payload.color,
         name: payload.name,
         type: payload.type,
-        color: payload.color,
       })
-      .where(and(eq(categories.id, categoryId), eq(categories.userId, session.user.id)))
+      .where(eq(categories.id, categoryId))
       .returning({ id: categories.id });
-
-    if (!updatedCategory) {
-      return { success: false, error: "Category not found." };
-    }
 
     revalidateCategoryPaths();
 
@@ -111,17 +127,32 @@ export async function updateCategory(
   } catch (error) {
     return error instanceof ZodError
       ? validationError<Extract<keyof CategoryInput, string>>(error)
-      : unexpectedError("Unable to update category.");
+      : unexpectedError(
+          error instanceof Error ? error.message : "Unable to update category.",
+        );
   }
 }
 
 export async function deleteCategory(
   categoryId: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireSession();
+  const auth = await getAuthContext().catch(() => null);
 
-  if (!session) {
+  if (!auth) {
     return { success: false, error: "Unauthorized." };
+  }
+
+  const category = await getCategoryForMutation(categoryId, auth.householdId);
+
+  if (!category) {
+    return { success: false, error: "Category not found." };
+  }
+
+  if (category.scope === "personal" && category.createdBy !== auth.userId) {
+    return {
+      success: false,
+      error: "Cannot delete another member's personal category.",
+    };
   }
 
   const [usage] = await db
@@ -130,7 +161,7 @@ export async function deleteCategory(
     .where(
       and(
         eq(transactions.categoryId, categoryId),
-        eq(transactions.userId, session.user.id),
+        eq(transactions.householdId, auth.householdId),
       ),
     );
 
@@ -143,12 +174,8 @@ export async function deleteCategory(
 
   const [deletedCategory] = await db
     .delete(categories)
-    .where(and(eq(categories.id, categoryId), eq(categories.userId, session.user.id)))
+    .where(eq(categories.id, categoryId))
     .returning({ id: categories.id });
-
-  if (!deletedCategory) {
-    return { success: false, error: "Category not found." };
-  }
 
   revalidateCategoryPaths();
 
@@ -159,9 +186,9 @@ export async function reassignCategoryTransactions(
   categoryId: string,
   targetCategoryId: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireSession();
+  const auth = await getAuthContext().catch(() => null);
 
-  if (!session) {
+  if (!auth) {
     return { success: false, error: "Unauthorized." };
   }
 
@@ -172,6 +199,27 @@ export async function reassignCategoryTransactions(
     };
   }
 
+  const source = await getCategoryForMutation(categoryId, auth.householdId);
+  const target = await getCategoryForMutation(targetCategoryId, auth.householdId);
+
+  if (!source || !target) {
+    return { success: false, error: "Category not found." };
+  }
+
+  if (source.scope === "personal" && source.createdBy !== auth.userId) {
+    return {
+      success: false,
+      error: "Cannot edit another member's personal category.",
+    };
+  }
+
+  if (target.scope === "personal" && target.createdBy !== auth.userId) {
+    return {
+      success: false,
+      error: "Choose one of your own visible categories.",
+    };
+  }
+
   await db.transaction(async (tx) => {
     await tx
       .update(transactions)
@@ -179,13 +227,11 @@ export async function reassignCategoryTransactions(
       .where(
         and(
           eq(transactions.categoryId, categoryId),
-          eq(transactions.userId, session.user.id),
+          eq(transactions.householdId, auth.householdId),
         ),
       );
 
-    await tx
-      .delete(categories)
-      .where(and(eq(categories.id, categoryId), eq(categories.userId, session.user.id)));
+    await tx.delete(categories).where(eq(categories.id, categoryId));
   });
 
   revalidateCategoryPaths();

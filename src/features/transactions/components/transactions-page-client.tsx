@@ -16,6 +16,7 @@ type TransactionsPageClientProps = Readonly<{
     type: "income" | "expense";
   }>;
   items: Array<{
+    addedByName: string;
     id: string;
     description: string;
     amount: string;
