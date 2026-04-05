@@ -2,7 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 
 import { ACCESS_COOKIE_NAME } from "@/lib/auth/cookies";
 import { env } from "@/lib/env";
-import { verifyToken } from "@/lib/auth/verify-token";
+import { verifyToken } from "@/lib/auth/jwt";
 
 const protectedPaths = [
   "/dashboard",

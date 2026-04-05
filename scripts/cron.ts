@@ -3,13 +3,13 @@ import "dotenv/config";
 import cron from "node-cron";
 import { and, eq, lte } from "drizzle-orm";
 
-import { db, pool } from "../lib/db";
-import { recurringTransactions, transactions } from "../lib/db/schema";
+import { db, pool } from "../src/db";
+import { recurringTransactions, transactions } from "../src/db/schema";
 import {
   addMonthsClamped,
   addYearsClamped,
   getDateString,
-} from "../lib/utils";
+} from "../src/lib/utils";
 
 function getNextDueDate(currentDate: Date, frequency: "monthly" | "yearly") {
   return frequency === "monthly"
