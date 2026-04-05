@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -42,13 +42,17 @@ export function CategoriesPageClient({
   const [editingCategory, setEditingCategory] = useState<CategoryRow | null>(null);
   const [reassignCategory, setReassignCategory] = useState<CategoryRow | null>(null);
   const [isPending, startTransition] = useTransition();
+
   const {
     register,
     handleSubmit,
     reset,
+    clearErrors,
     formState: { errors },
   } = useForm<CategoryInput>({
     resolver: zodResolver(categorySchema),
+    mode: "onSubmit",
+    reValidateMode: "onChange",
     defaultValues: {
       name: "",
       type: tab,
@@ -56,33 +60,13 @@ export function CategoriesPageClient({
     },
   });
 
-  useEffect(() => {
-    if (!isModalOpen) {
-      return;
-    }
-
-    if (editingCategory) {
-      reset({
-        name: editingCategory.name,
-        type: editingCategory.type,
-        color: editingCategory.color,
-      });
-      return;
-    }
-
-    reset({
-      name: "",
-      type: tab,
-      color: generateRandomHexColor(),
-    });
-  }, [editingCategory, isModalOpen, reset, tab]);
-
   const filteredCategories = useMemo(
     () => categories.filter((category) => category.type === tab),
     [categories, tab],
   );
 
   const onSubmit = handleSubmit((values) => {
+
     startTransition(async () => {
       const result = editingCategory
         ? await updateCategory(editingCategory.id, values)
@@ -103,6 +87,7 @@ export function CategoriesPageClient({
         type: tab,
         color: generateRandomHexColor(),
       });
+      clearErrors();
     });
   });
 
@@ -123,6 +108,7 @@ export function CategoriesPageClient({
               type: tab,
               color: generateRandomHexColor(),
             });
+            clearErrors();
             setIsModalOpen(true);
           }}
           className="w-full sm:w-auto"
@@ -130,6 +116,7 @@ export function CategoriesPageClient({
           Add category
         </Button>
       </div>
+
       <div className="inline-flex rounded-2xl bg-slate-100 p-1">
         {(["expense", "income"] as const).map((value) => (
           <button
@@ -140,12 +127,15 @@ export function CategoriesPageClient({
                 ? "bg-white text-slate-950 shadow"
                 : "text-slate-600"
             }`}
-            onClick={() => setTab(value)}
+            onClick={() => {
+              setTab(value);
+            }}
           >
             {value === "expense" ? "Expense" : "Income"}
           </button>
         ))}
       </div>
+
       <div className="grid gap-4 sm:grid-cols-2">
         {filteredCategories.map((category) => (
           <article
@@ -159,10 +149,14 @@ export function CategoriesPageClient({
                   style={{ backgroundColor: category.color }}
                 />
                 <div className="min-w-0">
-                  <h3 className="font-semibold text-slate-950 truncate">{category.name}</h3>
+                  <h3 className="font-semibold text-slate-950 truncate">
+                    {category.name}
+                  </h3>
                   <div className="mt-2 flex gap-2 flex-wrap">
                     <Badge
-                      variant={category.type === "income" ? "success" : "neutral"}
+                      variant={
+                        category.type === "income" ? "success" : "neutral"
+                      }
                     >
                       {category.type}
                     </Badge>
@@ -177,6 +171,12 @@ export function CategoriesPageClient({
                   variant="ghost"
                   onClick={() => {
                     setEditingCategory(category);
+                    reset({
+                      name: category.name,
+                      type: category.type,
+                      color: category.color,
+                    });
+                    clearErrors();
                     setIsModalOpen(true);
                   }}
                 >
@@ -187,6 +187,7 @@ export function CategoriesPageClient({
                   disabled={isPending}
                   onClick={() =>
                     startTransition(async () => {
+
                       const result = await deleteCategory(category.id);
 
                       if (!result.success) {
@@ -197,7 +198,6 @@ export function CategoriesPageClient({
                         toast.error(result.error);
                         return;
                       }
-
                       toast.success("Category deleted.");
                     })
                   }
@@ -209,6 +209,7 @@ export function CategoriesPageClient({
           </article>
         ))}
       </div>
+
       <Modal
         open={isModalOpen}
         onClose={() => {
@@ -219,11 +220,18 @@ export function CategoriesPageClient({
             type: tab,
             color: generateRandomHexColor(),
           });
+          clearErrors();
         }}
         title={editingCategory ? "Edit category" : "Add category"}
         description="Categories drive filters, charts, budgets, and recurring items."
       >
-        <form className="grid gap-4" onSubmit={onSubmit}>
+        {/* key forces a full remount on each open/edit session,
+            ensuring RHF refs attach correctly in production */}
+        <form
+          key={editingCategory?.id ?? "new"}
+          className="grid gap-4"
+          onSubmit={onSubmit}
+        >
           <Input
             label="Name"
             placeholder="Food, Salary, Freelance..."
@@ -248,10 +256,28 @@ export function CategoriesPageClient({
             />
           </div>
           <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
-            <Button variant="secondary" onClick={() => setIsModalOpen(false)} className="w-full sm:w-auto">
+            <Button
+              type="button"
+              variant="secondary"
+              onClick={() => {
+                setEditingCategory(null);
+                setIsModalOpen(false);
+                reset({
+                  name: "",
+                  type: tab,
+                  color: generateRandomHexColor(),
+                });
+                clearErrors();
+              }}
+              className="w-full sm:w-auto"
+            >
               Cancel
             </Button>
-            <Button type="submit" disabled={isPending} className="w-full sm:w-auto">
+            <Button
+              type="submit"
+              disabled={isPending}
+              className="w-full sm:w-auto"
+            >
               {isPending
                 ? "Saving..."
                 : editingCategory
@@ -261,6 +287,7 @@ export function CategoriesPageClient({
           </div>
         </form>
       </Modal>
+
       <ReassignModal
         open={Boolean(reassignCategory)}
         categoryId={reassignCategory?.id ?? ""}
