@@ -3,6 +3,7 @@
 import * as React from "react";
 import TextField from "@mui/material/TextField";
 import type { TextFieldProps } from "@mui/material/TextField";
+import type { InputLabelProps } from "@mui/material/InputLabel";
 
 type InputProps = Omit<TextFieldProps, "error" | "helperText" | "label" | "variant"> & {
   error?: string;
@@ -10,8 +11,12 @@ type InputProps = Omit<TextFieldProps, "error" | "helperText" | "label" | "varia
 };
 
 export const Input = React.forwardRef<HTMLInputElement, InputProps>(
-  ({ error, label, InputLabelProps, type, value, defaultValue, ...props }, ref) => {
+  ({ error, label, slotProps, type, value, defaultValue, ...props }, ref) => {
     const shouldShrinkLabel = type === "date" || value != null || defaultValue != null;
+    const inputLabelSlot =
+      slotProps?.inputLabel && typeof slotProps.inputLabel === "object"
+        ? (slotProps.inputLabel as Partial<InputLabelProps>)
+        : undefined;
 
     return (
       <TextField
@@ -25,9 +30,15 @@ export const Input = React.forwardRef<HTMLInputElement, InputProps>(
         helperText={error}
         fullWidth
         size="small"
-        InputLabelProps={{
-          ...InputLabelProps,
-          shrink: InputLabelProps?.shrink ?? shouldShrinkLabel,
+        slotProps={{
+          ...slotProps,
+          inputLabel:
+            shouldShrinkLabel && inputLabelSlot?.shrink === undefined
+              ? {
+                  ...inputLabelSlot,
+                  shrink: true,
+                }
+              : slotProps?.inputLabel,
         }}
       />
     );
