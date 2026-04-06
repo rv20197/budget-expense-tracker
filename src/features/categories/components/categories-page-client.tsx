@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useState, useTransition } from "react";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -48,6 +48,7 @@ export function CategoriesPageClient({
 
   const {
     register,
+    control,
     handleSubmit,
     reset,
     clearErrors,
@@ -249,14 +250,20 @@ export function CategoriesPageClient({
             {...register("name")}
           />
           <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Type"
-              options={[
-                { label: "Expense", value: "expense" },
-                { label: "Income", value: "income" },
-              ]}
-              error={errors.type?.message}
-              {...register("type")}
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Type"
+                  options={[
+                    { label: "Expense", value: "expense" },
+                    { label: "Income", value: "income" },
+                  ]}
+                  error={errors.type?.message}
+                  {...field}
+                />
+              )}
             />
             <Input
               label="Color"

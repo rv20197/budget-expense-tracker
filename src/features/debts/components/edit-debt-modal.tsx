@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -89,15 +89,21 @@ export function EditDebtModal({ open, debt, onClose }: EditDebtModalProps) {
           <Input label="Counterparty" error={errors.counterparty?.message} {...register("counterparty")} />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Principal" value={debt.principal} disabled />
-            <Select
-              label="Interest type"
-              options={[
-                { label: "None", value: "NONE" },
-                { label: "Simple", value: "SIMPLE" },
-                { label: "Compound", value: "COMPOUND" },
-              ]}
-              error={errors.interestType?.message}
-              {...register("interestType")}
+            <Controller
+              name="interestType"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Interest type"
+                  options={[
+                    { label: "None", value: "NONE" },
+                    { label: "Simple", value: "SIMPLE" },
+                    { label: "Compound", value: "COMPOUND" },
+                  ]}
+                  error={errors.interestType?.message}
+                  {...field}
+                />
+              )}
             />
           </div>
           {interestType !== "NONE" ? (

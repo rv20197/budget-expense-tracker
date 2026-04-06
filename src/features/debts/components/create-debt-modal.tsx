@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -73,14 +73,20 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <Input label="Name" error={errors.name?.message} {...register("name")} />
-          <Select
-            label="Direction"
-            options={[
-              { label: "My Debts", value: "DEBT" },
-              { label: "My Loans", value: "LOAN" },
-            ]}
-            error={errors.direction?.message}
-            {...register("direction")}
+          <Controller
+            name="direction"
+            control={control}
+            render={({ field }) => (
+              <Select
+                label="Direction"
+                options={[
+                  { label: "My Debts", value: "DEBT" },
+                  { label: "My Loans", value: "LOAN" },
+                ]}
+                error={errors.direction?.message}
+                {...field}
+              />
+            )}
           />
         </div>
         <Input
@@ -95,15 +101,21 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
             error={errors.principal?.message}
             {...register("principal")}
           />
-          <Select
-            label="Interest type"
-            options={[
-              { label: "None", value: "NONE" },
-              { label: "Simple", value: "SIMPLE" },
-              { label: "Compound", value: "COMPOUND" },
-            ]}
-            error={errors.interestType?.message}
-            {...register("interestType")}
+          <Controller
+            name="interestType"
+            control={control}
+            render={({ field }) => (
+              <Select
+                label="Interest type"
+                options={[
+                  { label: "None", value: "NONE" },
+                  { label: "Simple", value: "SIMPLE" },
+                  { label: "Compound", value: "COMPOUND" },
+                ]}
+                error={errors.interestType?.message}
+                {...field}
+              />
+            )}
           />
         </div>
         {interestType !== "NONE" ? (

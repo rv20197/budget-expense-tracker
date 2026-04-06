@@ -2,7 +2,7 @@
 
 import { useEffect, useRef } from "react";
 import { useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -17,6 +17,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
+import { InputLabel } from "@mui/material";
 
 type TransactionFormProps = Readonly<{
   open: boolean;
@@ -159,21 +160,33 @@ export function TransactionForm({
       <form ref={modalRef} className="flex flex-col h-full" onSubmit={onSubmit}>
         <div className="flex flex-col gap-4 flex-1">
           <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Type"
-              options={[
-                { label: "Expense", value: "expense" },
-                { label: "Income", value: "income" },
-              ]}
-              error={errors.type?.message}
-              {...register("type")}
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Type"
+                  options={[
+                    { label: "Expense", value: "expense" },
+                    { label: "Income", value: "income" },
+                  ]}
+                  error={errors.type?.message}
+                  {...field}
+                />
+              )}
             />
-            <Select
-              label="Category"
-              options={categoryOptions}
-              placeholder="Select category"
-              error={errors.categoryId?.message}
-              {...register("categoryId")}
+            <Controller
+              name="categoryId"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Category"
+                  options={categoryOptions}
+                  placeholder="Select category"
+                  error={errors.categoryId?.message}
+                  {...field}
+                />
+              )}
             />
           </div>
           <Input

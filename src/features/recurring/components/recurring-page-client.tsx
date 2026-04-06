@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useTransition } from "react";
-import { useForm, useWatch } from "react-hook-form";
+import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
@@ -217,21 +217,33 @@ export function RecurringPageClient({
       >
         <form className="grid gap-4" onSubmit={onSubmit}>
           <div className="grid gap-4 sm:grid-cols-2">
-            <Select
-              label="Type"
-              options={[
-                { label: "Expense", value: "expense" },
-                { label: "Income", value: "income" },
-              ]}
-              error={errors.type?.message}
-              {...register("type")}
+            <Controller
+              name="type"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Type"
+                  options={[
+                    { label: "Expense", value: "expense" },
+                    { label: "Income", value: "income" },
+                  ]}
+                  error={errors.type?.message}
+                  {...field}
+                />
+              )}
             />
-            <Select
-              label="Category"
-              options={categoryOptions}
-              placeholder="Select category"
-              error={errors.categoryId?.message}
-              {...register("categoryId")}
+            <Controller
+              name="categoryId"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Category"
+                  options={categoryOptions}
+                  placeholder="Select category"
+                  error={errors.categoryId?.message}
+                  {...field}
+                />
+              )}
             />
           </div>
           <Input
@@ -241,14 +253,20 @@ export function RecurringPageClient({
           />
           <div className="grid gap-4 sm:grid-cols-2">
             <Input label="Amount" error={errors.amount?.message} {...register("amount")} />
-            <Select
-              label="Frequency"
-              options={[
-                { label: "Monthly", value: "monthly" },
-                { label: "Yearly", value: "yearly" },
-              ]}
-              error={errors.frequency?.message}
-              {...register("frequency")}
+            <Controller
+              name="frequency"
+              control={control}
+              render={({ field }) => (
+                <Select
+                  label="Frequency"
+                  options={[
+                    { label: "Monthly", value: "monthly" },
+                    { label: "Yearly", value: "yearly" },
+                  ]}
+                  error={errors.frequency?.message}
+                  {...field}
+                />
+              )}
             />
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
