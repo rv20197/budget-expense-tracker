@@ -5,7 +5,7 @@ import { toast } from "sonner";
 
 import { cancelDebt } from "@/features/debts/actions/debt.actions";
 import { formatCurrency } from "@/lib/utils";
-import { PaymentHistoryTable } from "@/features/debts/components/payment-history-table";
+import { PaymentHistoryPanel } from "@/features/debts/components/payment-history-panel";
 import { RecordPaymentModal } from "@/features/debts/components/record-payment-modal";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -28,12 +28,6 @@ type DebtCardProps = Readonly<{
     installmentAmount: string | null;
     status: "ACTIVE" | "PAID" | "CANCELLED";
     notes: string | null;
-    payments: Array<{
-      id: string;
-      amount: string;
-      paidOn: string;
-      note: string | null;
-    }>;
   };
   projection: {
     months: number;
@@ -171,8 +165,8 @@ export function DebtCard({ debt, projection, onEdit }: DebtCardProps) {
         </div>
         {showHistory ? (
           <div className="mt-5">
-            <PaymentHistoryTable
-              payments={debt.payments}
+            <PaymentHistoryPanel
+              debtId={debt.id}
               amountPaid={debt.amountPaid}
             />
           </div>

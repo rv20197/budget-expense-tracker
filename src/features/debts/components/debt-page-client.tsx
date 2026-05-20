@@ -24,12 +24,6 @@ type DebtItem = {
   installmentAmount: string | null;
   status: "ACTIVE" | "PAID" | "CANCELLED";
   notes: string | null;
-  payments: Array<{
-    id: string;
-    amount: string;
-    paidOn: string;
-    note: string | null;
-  }>;
 };
 
 type DebtPageClientProps = Readonly<{

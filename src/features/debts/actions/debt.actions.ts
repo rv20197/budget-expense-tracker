@@ -30,14 +30,12 @@ function decimal(value: Decimal.Value) {
   return new Decimal(value);
 }
 
-function mapDebtRow(
-  row: typeof debts.$inferSelect & { addedByName: string },
-  paymentTotal: string,
-  payments: Array<typeof debtPayments.$inferSelect>,
-) {
+function mapDebtRow(row: typeof debts.$inferSelect & { addedByName: string }) {
   const principal = decimal(row.principal);
   const remainingBalance = decimal(row.remainingBalance);
-  const amountPaid = decimal(paymentTotal);
+  // amountPaid is derived from the DB-maintained remainingBalance so we
+  // don't need to load or sum payment rows to display the progress bar.
+  const amountPaid = Decimal.max(principal.minus(remainingBalance), 0);
 
   return {
     ...row,
@@ -48,11 +46,6 @@ function mapDebtRow(
     interestRate: toMoneyString(row.interestRate),
     dueDate: row.dueDate ? getDateString(row.dueDate) : null,
     nextPaymentDate: row.nextPaymentDate ? getDateString(row.nextPaymentDate) : null,
-    payments: payments.map((payment) => ({
-      ...payment,
-      amount: toMoneyString(payment.amount),
-      paidOn: getDateString(payment.paidOn),
-    })),
     principal: toMoneyString(principal),
     remainingBalance: toMoneyString(remainingBalance),
   };
@@ -100,71 +93,41 @@ export async function getDebts() {
     return { debts: [], loans: [] };
   }
 
-  const [debtRows, payments] = await Promise.all([
-    db
-      .select({
-        addedByName: users.name,
-        createdAt: debts.createdAt,
-        createdBy: debts.createdBy,
-        counterparty: debts.counterparty,
-        direction: debts.direction,
-        dueDate: debts.dueDate,
-        id: debts.id,
-        installmentAmount: debts.installmentAmount,
-        interestRate: debts.interestRate,
-        interestType: debts.interestType,
-        householdId: debts.householdId,
-        name: debts.name,
-        nextPaymentDate: debts.nextPaymentDate,
-        notes: debts.notes,
-        principal: debts.principal,
-        remainingBalance: debts.remainingBalance,
-        status: debts.status,
-        updatedAt: debts.updatedAt,
-      })
-      .from(debts)
-      .innerJoin(users, eq(users.id, debts.createdBy))
-      .where(eq(debts.householdId, auth.householdId))
-      .orderBy(
-        asc(
-          sql`case when ${debts.status} = 'PAID' then 1 when ${debts.status} = 'CANCELLED' then 2 else 0 end`,
-        ),
-        asc(debts.nextPaymentDate),
-        desc(debts.createdAt),
+  const debtRows = await db
+    .select({
+      addedByName: users.name,
+      createdAt: debts.createdAt,
+      createdBy: debts.createdBy,
+      counterparty: debts.counterparty,
+      direction: debts.direction,
+      dueDate: debts.dueDate,
+      id: debts.id,
+      installmentAmount: debts.installmentAmount,
+      interestRate: debts.interestRate,
+      interestType: debts.interestType,
+      householdId: debts.householdId,
+      name: debts.name,
+      nextPaymentDate: debts.nextPaymentDate,
+      notes: debts.notes,
+      principal: debts.principal,
+      remainingBalance: debts.remainingBalance,
+      status: debts.status,
+      updatedAt: debts.updatedAt,
+    })
+    .from(debts)
+    .innerJoin(users, eq(users.id, debts.createdBy))
+    .where(eq(debts.householdId, auth.householdId))
+    .orderBy(
+      asc(
+        sql`case when ${debts.status} = 'PAID' then 1 when ${debts.status} = 'CANCELLED' then 2 else 0 end`,
       ),
-    db
-      .select()
-      .from(debtPayments)
-      .innerJoin(debts, eq(debts.id, debtPayments.debtId))
-      .where(eq(debts.householdId, auth.householdId))
-      .orderBy(desc(debtPayments.paidOn), desc(debtPayments.createdAt)),
-  ]);
+      asc(debts.nextPaymentDate),
+      desc(debts.createdAt),
+    );
 
-  // Group payments by debt and sum totals in a single JS pass (avoids a
-  // redundant SQL aggregation query that duplicated the full-scan).
-  const paymentsByDebt = new Map<
-    string,
-    Array<typeof debtPayments.$inferSelect>
-  >();
-  const paymentTotalsByDebt = new Map<string, Decimal>();
-
-  for (const payment of payments) {
-    const item = payment.debt_payments;
-    const list = paymentsByDebt.get(item.debtId) ?? [];
-    list.push(item);
-    paymentsByDebt.set(item.debtId, list);
-
-    const running = paymentTotalsByDebt.get(item.debtId) ?? new Decimal(0);
-    paymentTotalsByDebt.set(item.debtId, running.plus(item.amount));
-  }
-
-  const mapped = debtRows.map((row) =>
-    mapDebtRow(
-      row,
-      (paymentTotalsByDebt.get(row.id) ?? new Decimal(0)).toFixed(2),
-      paymentsByDebt.get(row.id) ?? [],
-    ),
-  );
+  // amountPaid is derived from principal − remainingBalance (maintained by
+  // recordPayment). No need to load individual payment rows here.
+  const mapped = debtRows.map(mapDebtRow);
 
   return {
     debts: mapped.filter((item) => item.direction === "DEBT"),
@@ -533,4 +496,72 @@ export async function getPayoffProjection(debtId: string) {
     decimal(debt.interestRate),
     debt.interestType,
   );
+}
+
+const PAYMENT_PAGE_SIZE = 10;
+
+export type PaymentHistoryPage = {
+  items: Array<{
+    id: string;
+    amount: string;
+    paidOn: string;
+    note: string | null;
+  }>;
+  page: number;
+  pageSize: number;
+  total: number;
+  totalPages: number;
+};
+
+export async function getPaymentHistory(
+  debtId: string,
+  page = 1,
+): Promise<PaymentHistoryPage | null> {
+  const auth = await getAuthContext().catch(() => null);
+
+  if (!auth) {
+    return null;
+  }
+
+  // Verify the debt belongs to the authenticated household before
+  // exposing any payment data.
+  const debt = await getDebtForHousehold(debtId, auth.householdId);
+
+  if (!debt) {
+    return null;
+  }
+
+  const safePage = Math.max(page, 1);
+  const offset = (safePage - 1) * PAYMENT_PAGE_SIZE;
+
+  const [items, [{ total }]] = await Promise.all([
+    db
+      .select({
+        id: debtPayments.id,
+        amount: debtPayments.amount,
+        paidOn: debtPayments.paidOn,
+        note: debtPayments.note,
+      })
+      .from(debtPayments)
+      .where(eq(debtPayments.debtId, debtId))
+      .orderBy(desc(debtPayments.paidOn), desc(debtPayments.createdAt))
+      .limit(PAYMENT_PAGE_SIZE)
+      .offset(offset),
+    db
+      .select({ total: sql<number>`count(*)::int` })
+      .from(debtPayments)
+      .where(eq(debtPayments.debtId, debtId)),
+  ]);
+
+  return {
+    items: items.map((item) => ({
+      ...item,
+      amount: toMoneyString(item.amount),
+      paidOn: getDateString(item.paidOn),
+    })),
+    page: safePage,
+    pageSize: PAYMENT_PAGE_SIZE,
+    total,
+    totalPages: Math.ceil(total / PAYMENT_PAGE_SIZE),
+  };
 }
