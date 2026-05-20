@@ -26,6 +26,8 @@ export async function GET(request: Request) {
     conditions.push(lte(transactions.transactionDate, new Date(to)));
   }
 
+  const MAX_EXPORT_ROWS = 10_000;
+
   const rows = await db
     .select({
       date: transactions.transactionDate,
@@ -37,7 +39,9 @@ export async function GET(request: Request) {
     })
     .from(transactions)
     .innerJoin(categories, eq(categories.id, transactions.categoryId))
-    .where(and(...conditions));
+    .where(and(...conditions))
+    .orderBy(transactions.transactionDate)
+    .limit(MAX_EXPORT_ROWS);
 
   const csvLines = [
     "date,description,amount,type,category,notes",
@@ -66,6 +70,11 @@ export async function GET(request: Request) {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": 'attachment; filename="transactions.csv"',
+      "X-Export-Row-Count": String(rows.length),
+      "X-Export-Row-Limit": String(MAX_EXPORT_ROWS),
+      ...(rows.length === MAX_EXPORT_ROWS
+        ? { "X-Export-Truncated": "true" }
+        : {}),
     },
   });
 }
