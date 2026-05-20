@@ -463,12 +463,10 @@ export async function deletePayment(
   return { success: true, data: result };
 }
 
-export async function getDebtSummary(householdId?: string) {
+export async function getDebtSummary() {
   "use cache";
 
-  const auth = householdId
-    ? { householdId }
-    : await getAuthContext().catch(() => null);
+  const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
     return {

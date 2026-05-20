@@ -36,7 +36,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getMonthlySummary(dashboardContext, current.month, current.year),
     getCategoryBreakdown(dashboardContext, from, to),
     getTrend(dashboardContext, 1),
-    getDebtSummary(session.user.householdId),
+    getDebtSummary(),
   ]);
 
   return (
