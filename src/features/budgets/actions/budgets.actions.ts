@@ -262,29 +262,41 @@ export async function copyBudgetsToNextMonth(
   const nextMonth = nextMonthDate.getMonth() + 1;
   const nextYear = nextMonthDate.getFullYear();
 
-  for (const budget of currentMonthBudgets) {
-    const [existingBudget] = await db
-      .select({ id: budgets.id })
-      .from(budgets)
-      .where(
-        and(
-          eq(budgets.householdId, budget.householdId),
-          eq(budgets.categoryId, budget.categoryId),
-          eq(budgets.month, nextMonth),
-          eq(budgets.year, nextYear),
-          eq(budgets.scope, budget.scope),
-          budget.scope === "personal" ? eq(budgets.createdBy, auth.userId) : undefined,
+  // Fetch all existing next-month budgets in one query so we can split
+  // currentMonthBudgets into inserts vs updates without N round-trips.
+  const existingNextMonth = await db
+    .select({ id: budgets.id, categoryId: budgets.categoryId, scope: budgets.scope, createdBy: budgets.createdBy })
+    .from(budgets)
+    .where(
+      and(
+        eq(budgets.householdId, auth.householdId),
+        eq(budgets.month, nextMonth),
+        eq(budgets.year, nextYear),
+        or(
+          eq(budgets.scope, "household"),
+          and(eq(budgets.scope, "personal"), eq(budgets.createdBy, auth.userId)),
         ),
-      )
-      .limit(1);
+      ),
+    );
 
-    if (existingBudget) {
-      await db
-        .update(budgets)
-        .set({ amount: budget.amount })
-        .where(eq(budgets.id, existingBudget.id));
+  const existingKey = (categoryId: string, scope: string, createdBy: string) =>
+    `${categoryId}:${scope}:${scope === "personal" ? createdBy : ""}`;
+
+  const existingMap = new Map(
+    existingNextMonth.map((b) => [existingKey(b.categoryId, b.scope, b.createdBy), b.id]),
+  );
+
+  const toInsert: Array<typeof budgets.$inferInsert> = [];
+  const toUpdate: Array<{ id: string; amount: string }> = [];
+
+  for (const budget of currentMonthBudgets) {
+    const key = existingKey(budget.categoryId, budget.scope, budget.createdBy);
+    const existingId = existingMap.get(key);
+
+    if (existingId) {
+      toUpdate.push({ id: existingId, amount: budget.amount });
     } else {
-      await db.insert(budgets).values({
+      toInsert.push({
         amount: budget.amount,
         categoryId: budget.categoryId,
         createdBy: budget.createdBy,
@@ -295,6 +307,15 @@ export async function copyBudgetsToNextMonth(
       });
     }
   }
+
+  await db.transaction(async (tx) => {
+    if (toInsert.length > 0) {
+      await tx.insert(budgets).values(toInsert);
+    }
+    for (const { id, amount } of toUpdate) {
+      await tx.update(budgets).set({ amount }).where(eq(budgets.id, id));
+    }
+  });
 
   revalidateBudgetPaths();
 
