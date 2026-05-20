@@ -11,6 +11,7 @@ import { debtPayments, debts, users } from "@/db/schema";
 import { getAuthContext } from "@/lib/auth/getUser";
 import type { ActionResult } from "@/lib/types/actions";
 import { addMonthsClamped, getDateString, toMoneyString } from "@/lib/utils";
+import { calculatePayoffMonths } from "@/features/debts/lib/projection";
 import {
   createDebtSchema,
   recordPaymentSchema,
@@ -58,46 +59,27 @@ function mapDebtRow(
 }
 
 function calculateProjection(
+  principal: Decimal,
   remainingBalance: Decimal,
   installmentAmount: Decimal,
   interestRate: Decimal,
   interestType: "NONE" | "SIMPLE" | "COMPOUND",
 ) {
-  if (installmentAmount.lte(0)) {
+  const months = calculatePayoffMonths(
+    principal,
+    remainingBalance,
+    installmentAmount,
+    interestRate,
+    interestType,
+  );
+
+  if (months === null) {
     return null;
   }
-
-  let balance = remainingBalance;
-  let months = 0;
-  const monthlyRate =
-    interestType === "NONE" ? new Decimal(0) : interestRate.div(100).div(12);
-
-  while (balance.gt(0) && months < 1200) {
-    if (interestType === "SIMPLE") {
-      balance = balance.plus(remainingBalance.mul(monthlyRate));
-    }
-
-    if (interestType === "COMPOUND") {
-      balance = balance.plus(balance.mul(monthlyRate));
-    }
-
-    balance = balance.minus(installmentAmount);
-    months += 1;
-
-    if (balance.gt(0) && installmentAmount.lte(balance.mul(monthlyRate))) {
-      return null;
-    }
-  }
-
-  if (months === 0 || months >= 1200) {
-    return null;
-  }
-
-  const projectedDate = addMonthsClamped(new Date(), months);
 
   return {
     months,
-    projectedPayoffDate: getDateString(projectedDate),
+    projectedPayoffDate: getDateString(addMonthsClamped(new Date(), months)),
   };
 }
 
@@ -545,6 +527,7 @@ export async function getPayoffProjection(debtId: string) {
   }
 
   return calculateProjection(
+    decimal(debt.principal),
     decimal(debt.remainingBalance),
     decimal(debt.installmentAmount),
     decimal(debt.interestRate),

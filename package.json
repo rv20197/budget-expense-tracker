@@ -15,7 +15,9 @@
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
     "cron": "tsx scripts/cron.ts",
-    "db": "npm run db:generate && npm run db:migrate && npm run db:push"
+    "db": "npm run db:generate && npm run db:migrate && npm run db:push",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "dependencies": {
     "@emotion/react": "^11.14.0",
@@ -53,6 +55,7 @@
     "eslint-config-next": "^16.2.1",
     "tailwindcss": "^4.2.2",
     "tsx": "^4.21.0",
-    "typescript": "^5.9.3"
+    "typescript": "^5.9.3",
+    "vitest": "^4.1.6"
   }
 }
