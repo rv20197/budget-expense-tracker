@@ -16,7 +16,7 @@ import {
   toDecimal,
   toMoneyString,
 } from "@/lib/utils";
-import { budgetSchema, type BudgetInput } from "@/features/transactions/schemas/finance.schemas";
+import { budgetSchema, type BudgetInput } from "@/features/budgets/schemas/budget.schemas";
 
 type RecordScope = "household" | "personal";
 
