@@ -1,10 +1,11 @@
 import "dotenv/config";
 
 import cron from "node-cron";
-import { and, eq, lte } from "drizzle-orm";
+import { and, eq, lte, sql } from "drizzle-orm";
 
 import { db, pool } from "../src/db";
 import {
+  cronHealth,
   householdMembers,
   recurringTransactions,
   transactions,
@@ -15,10 +16,44 @@ import {
   getDateString,
 } from "../src/lib/utils";
 
+const JOB_NAME = "recurring-transactions";
+
 function getNextDueDate(currentDate: Date, frequency: "monthly" | "yearly") {
   return frequency === "monthly"
     ? addMonthsClamped(currentDate, 1)
     : addYearsClamped(currentDate, 1);
+}
+
+async function writeHeartbeat(success: boolean, error?: string) {
+  try {
+    await db
+      .insert(cronHealth)
+      .values({
+        jobName: JOB_NAME,
+        lastRunAt: new Date(),
+        lastSuccessAt: success ? new Date() : undefined,
+        lastError: success ? null : (error ?? "Unknown error"),
+        lastErrorAt: success ? undefined : new Date(),
+        runCount: 1,
+        successCount: success ? 1 : 0,
+      })
+      .onConflictDoUpdate({
+        target: cronHealth.jobName,
+        set: {
+          lastRunAt: new Date(),
+          lastSuccessAt: success ? new Date() : undefined,
+          lastError: success ? null : (error ?? "Unknown error"),
+          lastErrorAt: success ? undefined : new Date(),
+          runCount: sql`${cronHealth.runCount} + 1`,
+          successCount: success
+            ? sql`${cronHealth.successCount} + 1`
+            : undefined,
+        },
+      });
+  } catch (heartbeatError) {
+    // Heartbeat failure must never crash the cron process itself.
+    console.error("[cron] Failed to write heartbeat:", heartbeatError);
+  }
 }
 
 async function processRecurringTransactions() {
@@ -77,9 +112,12 @@ cron.schedule("0 * * * *", async () => {
 
   try {
     await processRecurringTransactions();
+    await writeHeartbeat(true);
     console.log("[cron] Completed successfully.");
   } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
     console.error("[cron] Failed:", error);
+    await writeHeartbeat(false, message);
   }
 });
 

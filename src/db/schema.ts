@@ -290,6 +290,16 @@ export const debtPayments = pgTable(
   ],
 );
 
+export const cronHealth = pgTable("cron_health", {
+  jobName: varchar("job_name", { length: 100 }).primaryKey(),
+  lastRunAt: timestamp("last_run_at", { withTimezone: true }),
+  lastSuccessAt: timestamp("last_success_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  lastErrorAt: timestamp("last_error_at", { withTimezone: true }),
+  runCount: integer("run_count").default(0).notNull(),
+  successCount: integer("success_count").default(0).notNull(),
+});
+
 export type User = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type Household = typeof households.$inferSelect;
@@ -300,3 +310,4 @@ export type Budget = typeof budgets.$inferSelect;
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
 export type Debt = typeof debts.$inferSelect;
 export type DebtPayment = typeof debtPayments.$inferSelect;
+export type CronHealth = typeof cronHealth.$inferSelect;
