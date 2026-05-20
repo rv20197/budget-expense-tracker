@@ -118,7 +118,7 @@ export async function getDebts() {
     return { debts: [], loans: [] };
   }
 
-  const [debtRows, paymentTotals, payments] = await Promise.all([
+  const [debtRows, payments] = await Promise.all([
     db
       .select({
         addedByName: users.name,
@@ -151,15 +151,6 @@ export async function getDebts() {
         desc(debts.createdAt),
       ),
     db
-      .select({
-        debtId: debtPayments.debtId,
-        total: sql<string>`coalesce(sum(${debtPayments.amount}), 0)`,
-      })
-      .from(debtPayments)
-      .innerJoin(debts, eq(debts.id, debtPayments.debtId))
-      .where(eq(debts.householdId, auth.householdId))
-      .groupBy(debtPayments.debtId),
-    db
       .select()
       .from(debtPayments)
       .innerJoin(debts, eq(debts.id, debtPayments.debtId))
@@ -167,25 +158,28 @@ export async function getDebts() {
       .orderBy(desc(debtPayments.paidOn), desc(debtPayments.createdAt)),
   ]);
 
-  const paymentTotalsByDebt = new Map(
-    paymentTotals.map((item) => [item.debtId, item.total]),
-  );
+  // Group payments by debt and sum totals in a single JS pass (avoids a
+  // redundant SQL aggregation query that duplicated the full-scan).
   const paymentsByDebt = new Map<
     string,
     Array<typeof debtPayments.$inferSelect>
   >();
+  const paymentTotalsByDebt = new Map<string, Decimal>();
 
   for (const payment of payments) {
     const item = payment.debt_payments;
     const list = paymentsByDebt.get(item.debtId) ?? [];
     list.push(item);
     paymentsByDebt.set(item.debtId, list);
+
+    const running = paymentTotalsByDebt.get(item.debtId) ?? new Decimal(0);
+    paymentTotalsByDebt.set(item.debtId, running.plus(item.amount));
   }
 
   const mapped = debtRows.map((row) =>
     mapDebtRow(
       row,
-      paymentTotalsByDebt.get(row.id) ?? "0",
+      (paymentTotalsByDebt.get(row.id) ?? new Decimal(0)).toFixed(2),
       paymentsByDebt.get(row.id) ?? [],
     ),
   );
