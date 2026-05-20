@@ -32,8 +32,9 @@ export function formatMonthYear(month: number, year: number) {
 }
 
 export function getMonthOptions() {
+  const year = new Date().getFullYear();
   return Array.from({ length: 12 }, (_, index) => ({
-    label: formatMonthYear(index + 1, 2026).split(" ")[0],
+    label: formatMonthYear(index + 1, year).split(" ")[0],
     value: String(index + 1),
   }));
 }
