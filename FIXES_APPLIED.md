@@ -273,33 +273,36 @@ Indirection with no semantic meaning makes it harder to trace auth logic.
 
 ---
 
-## Intentionally Skipped
+## Previously Deferred — Now Resolved
 
-### `updatedAt` not enforced at DB level
-Drizzle's `$onUpdateFn(() => new Date())` only fires through the ORM — raw SQL
-updates bypass it. Fixing this requires a database trigger. Adding triggers
-is out of scope for this pass (requires a new migration and testing).
-**TODO:** Add `CREATE TRIGGER set_updated_at BEFORE UPDATE ON <table>` via a
-migration for each table that uses `updatedAt`.
+### DB-level `updatedAt` trigger
+**Resolved in:** `feat(db): add DB-level updated_at trigger for all timestamped tables`  
+Created `set_updated_at()` PL/pgSQL function and `BEFORE UPDATE` triggers on all
+8 tables (`users`, `refresh_tokens`, `households`, `categories`, `transactions`,
+`budgets`, `recurring_transactions`, `debts`) via migration
+`0003_set_updated_at_triggers.sql`. Requires PostgreSQL 14+ (project uses PG 16).
 
-### Cron process has no health-check or alerting
-If `scripts/cron.ts` crashes, recurring transactions silently stop processing.
-Fixing this properly requires external infra (process supervision, alerting,
-or a cloud scheduler). Adding `try/catch` with process-level monitoring is
-a deployment concern outside this codebase.
-**TODO:** Run the cron as a supervised process (systemd, Docker restart policy,
-or a cloud scheduler like Railway's Cron Jobs) with an alert on failure.
+### Cron process monitoring
+**Resolved in:** `feat: add cron heartbeat monitoring and /api/health/cron endpoint`  
+Added `cron_health` table (migration `0004_cron_health.sql`). `scripts/cron.ts`
+writes a heartbeat upsert after every run (success or failure). `GET
+/api/health/cron` returns 200 if the last successful run was within 2 hours
+(2× the hourly schedule), or 503 with the last error details if stale. Heartbeat
+write failures are caught and logged without crashing the cron process.
 
-### Simple interest calculation edge case in `calculateProjection`
-The simple interest model in `debt.actions.ts:calculateProjection` adds
-`remainingBalance * monthlyRate` (the initial balance) each month regardless
-of payments made. This overestimates interest for large payments. The function
-is explicitly used for projections/estimates only, and the comment on the
-return value makes clear it's approximate. Fixing requires a richer financial
-model (amortization schedule) that is out of scope.
+### Simple interest calculation edge case
+**Resolved in:** `fix: correct simple interest base in payoff projection + add tests`  
+`calculateProjection` was using `remainingBalance` (the current DB balance) as
+the base for simple interest instead of the original `principal`. Added `principal`
+parameter; simple interest now charges `principal × monthlyRate` (flat per period,
+per the definition). Extracted pure `calculatePayoffMonths()` to
+`src/features/debts/lib/projection.ts`; 13 Vitest tests cover NONE / SIMPLE /
+COMPOUND cases including the regression scenario.
 
-### `getDebts` memory scaling for large payment histories
-The full payment history for all debts is loaded into memory. For households
-with many years of history, this could grow large. Pagination of the payment
-history table was not added because the current UI renders all payments in a
-scrollable list — changing this requires UI work beyond a backend fix.
+### Payment history pagination
+**Resolved in:** `feat: paginate payment history — lazy load 10 per page`  
+Removed the unbounded payment-row load from `getDebts` (derived `amountPaid` from
+`principal − remainingBalance` instead). Added `getPaymentHistory(debtId, page)`
+Server Action (10 rows/page, household-scoped auth check). Replaced
+`PaymentHistoryTable` with `PaymentHistoryPanel` — a client component that lazy-
+loads page 1 when "View History" is opened, with Previous/Next pagination controls.
