@@ -1,6 +1,6 @@
 "use server";
 
-import { cookies } from "next/headers";
+import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { ZodError } from "zod";
 
@@ -14,6 +14,15 @@ import {
   type LoginInput,
   type RegisterInput,
 } from "@/features/auth/schemas/auth.schemas";
+
+async function getClientIp(): Promise<string> {
+  const headerStore = await headers();
+  return (
+    headerStore.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    headerStore.get("x-real-ip") ??
+    "unknown"
+  );
+}
 
 export async function registerAction(
   input: RegisterInput,
@@ -53,7 +62,8 @@ export async function loginAction(
 ): Promise<ActionResult<{ redirectTo: string }, keyof LoginInput>> {
   try {
     const payload = loginSchema.parse(input);
-    const result = await loginUser(payload, "server-action");
+    const ip = await getClientIp();
+    const result = await loginUser(payload, ip);
 
     if (!result.success) {
       return result;

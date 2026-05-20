@@ -1,3 +1,6 @@
+// NOTE: In-memory store — resets on process restart and does not work across
+// multiple Node.js instances. For production multi-instance deployments, replace
+// with a Redis-backed implementation (e.g. ioredis + sliding-window counter).
 const WINDOW_MS = 15 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 
