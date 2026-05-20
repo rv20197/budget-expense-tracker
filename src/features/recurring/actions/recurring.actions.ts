@@ -15,10 +15,6 @@ import {
   type RecurringTransactionInput,
 } from "@/features/transactions/schemas/finance.schemas";
 
-async function requireSession() {
-  return getSession();
-}
-
 function revalidateRecurringPaths() {
   revalidatePath("/recurring");
   revalidatePath("/transactions");
@@ -26,7 +22,7 @@ function revalidateRecurringPaths() {
 }
 
 export async function getRecurringTransactions() {
-  const session = await requireSession();
+  const session = await getSession();
 
   if (!session) {
     return { all: [], upcoming: [] };
@@ -75,7 +71,7 @@ export async function createRecurringTransaction(
 ): Promise<
   ActionResult<{ id: string }, Extract<keyof RecurringTransactionInput, string>>
 > {
-  const session = await requireSession();
+  const session = await getSession();
 
   if (!session) {
     return { success: false, error: "Unauthorized." };
@@ -116,7 +112,7 @@ export async function updateRecurringTransaction(
 ): Promise<
   ActionResult<{ id: string }, Extract<keyof RecurringTransactionInput, string>>
 > {
-  const session = await requireSession();
+  const session = await getSession();
 
   if (!session) {
     return { success: false, error: "Unauthorized." };
@@ -163,7 +159,7 @@ export async function updateRecurringTransaction(
 export async function deleteRecurringTransaction(
   recurringId: string,
 ): Promise<ActionResult<{ id: string }>> {
-  const session = await requireSession();
+  const session = await getSession();
 
   if (!session) {
     return { success: false, error: "Unauthorized." };
