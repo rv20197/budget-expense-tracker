@@ -3,7 +3,7 @@ import "dotenv/config";
 import cron from "node-cron";
 import { and, eq, lte, sql } from "drizzle-orm";
 
-import { db, pool } from "../src/db";
+import { db, pool } from "../src/db/base";
 import {
   cronHealth,
   householdMembers,

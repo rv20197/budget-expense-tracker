@@ -10,8 +10,6 @@ const STALE_THRESHOLD_MS = 2 * 60 * 60 * 1000;
 
 const JOB_NAME = "recurring-transactions";
 
-export const dynamic = "force-dynamic";
-
 export async function GET() {
   const [row] = await db
     .select()
