@@ -14,6 +14,7 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
+    "migrate": "tsx scripts/migrate.ts",
     "cron": "tsx scripts/cron.ts",
     "db": "npm run db:generate && npm run db:migrate && npm run db:push",
     "test": "vitest run",

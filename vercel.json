@@ -1,0 +1,10 @@
+{
+  "buildCommand": "next build && npm run migrate",
+  "outputDirectory": ".next",
+  "env": {},
+  "functions": {
+    "api/**/*.ts": {
+      "maxDuration": 30
+    }
+  }
+}
