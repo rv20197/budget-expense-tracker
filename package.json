@@ -16,7 +16,6 @@
     "db:studio": "drizzle-kit studio",
     "migrate": "tsx scripts/migrate.ts",
     "cron": "tsx scripts/cron.ts",
-    "db": "npm run db:generate && npm run db:migrate && npm run db:push",
     "test": "vitest run",
     "test:watch": "vitest"
   },
@@ -35,6 +34,7 @@
     "nanoid": "^5.1.7",
     "next": "^16.2.0",
     "node-cron": "^4.2.1",
+    "openai": "^6.39.0",
     "pg": "^8.20.0",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",

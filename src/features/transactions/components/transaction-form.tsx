@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
-import { useTransition } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
 import { Controller, useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
@@ -17,7 +16,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Modal } from "@/components/ui/modal";
 import { Select } from "@/components/ui/select";
-import { InputLabel } from "@mui/material";
+
+type AiSuggestion = {
+  categoryId: string;
+  categoryName: string;
+  confidence: "high" | "medium" | "low";
+  reason: string;
+};
+
+const confidenceStyles: Record<AiSuggestion["confidence"], string> = {
+  high: "bg-green-50 border-green-200 text-green-800",
+  medium: "bg-yellow-50 border-yellow-200 text-yellow-800",
+  low: "bg-gray-50 border-gray-200 text-gray-600",
+};
 
 type TransactionFormProps = Readonly<{
   open: boolean;
@@ -47,11 +58,17 @@ export function TransactionForm({
   const [isPending, startTransition] = useTransition();
   const modalRef = useRef<HTMLFormElement>(null);
   const isEditing = Boolean(transaction);
+
+  const [aiSuggestion, setAiSuggestion] = useState<AiSuggestion | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiDismissed, setAiDismissed] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const {
     register,
     handleSubmit,
     control,
     reset,
+    setValue,
     formState: { errors },
   } = useForm<TransactionInput>({
     resolver: zodResolver(transactionSchema),
@@ -76,6 +93,8 @@ export function TransactionForm({
   });
 
   const selectedType = useWatch({ control, name: "type" });
+  const watchedDescription = useWatch({ control, name: "description" });
+  const watchedAmount = useWatch({ control, name: "amount" });
   const categoryOptions = categories
     .filter((category) => category.type === selectedType)
     .map((category) => ({
@@ -128,6 +147,56 @@ export function TransactionForm({
     }
   }, [open]);
 
+  // Reset AI state when type changes
+  useEffect(() => {
+    setAiSuggestion(null);
+    setAiDismissed(false);
+    setAiLoading(false);
+  }, [selectedType]);
+
+  // Debounced AI categorization
+  useEffect(() => {
+    setAiSuggestion(null);
+    setAiDismissed(false);
+
+    if (!watchedDescription || watchedDescription.trim().length < 3) {
+      setAiLoading(false);
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+      return;
+    }
+
+    setAiLoading(true);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/ai/categorize", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            description: watchedDescription,
+            amount: watchedAmount || undefined,
+            type: selectedType,
+          }),
+        });
+        if (!res.ok) return;
+        const data = (await res.json()) as { suggestion: AiSuggestion | null };
+        if (data.suggestion) {
+          setAiSuggestion(data.suggestion);
+        }
+      } catch {
+        // silently fail — category field remains fully manual
+      } finally {
+        setAiLoading(false);
+      }
+    }, 600);
+
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [watchedDescription, selectedType]);
+
   const onSubmit = handleSubmit((values) => {
     startTransition(async () => {
       const result = transaction
@@ -143,6 +212,8 @@ export function TransactionForm({
         isEditing ? "Transaction updated." : "Transaction created.",
       );
       reset();
+      setAiSuggestion(null);
+      setAiDismissed(false);
       onClose();
     });
   });
@@ -152,6 +223,8 @@ export function TransactionForm({
       open={open}
       onClose={() => {
         reset();
+        setAiSuggestion(null);
+        setAiDismissed(false);
         onClose();
       }}
       title={isEditing ? "Edit transaction" : "Add transaction"}
@@ -195,6 +268,43 @@ export function TransactionForm({
             error={errors.description?.message}
             {...register("description")}
           />
+
+          {aiLoading && (
+            <p className="text-xs text-gray-400 -mt-2">Suggesting category…</p>
+          )}
+
+          {!aiDismissed && aiSuggestion && !aiLoading && (
+            <div
+              className={`flex items-start gap-3 rounded-lg border px-3 py-2 text-xs -mt-2 ${confidenceStyles[aiSuggestion.confidence]}`}
+            >
+              <div className="flex-1 min-w-0">
+                <span className="font-medium">Suggested: {aiSuggestion.categoryName}</span>
+                <span className="opacity-70"> · {aiSuggestion.confidence} confidence</span>
+                <p className="opacity-70 mt-0.5 truncate">{aiSuggestion.reason}</p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setValue("categoryId", aiSuggestion.categoryId, { shouldValidate: true });
+                    setAiSuggestion(null);
+                  }}
+                  className="rounded px-2 py-1 font-medium hover:opacity-80 focus:outline-none focus:ring-1 focus:ring-current"
+                >
+                  Apply
+                </button>
+                <button
+                  type="button"
+                  aria-label="Dismiss suggestion"
+                  onClick={() => setAiDismissed(true)}
+                  className="rounded px-1 py-1 opacity-60 hover:opacity-100 focus:outline-none focus:ring-1 focus:ring-current"
+                >
+                  ✕
+                </button>
+              </div>
+            </div>
+          )}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <Input
               label="Amount"
