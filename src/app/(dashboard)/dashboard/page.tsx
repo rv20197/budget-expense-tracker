@@ -1,9 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { AnomalyAlerts } from "@/features/dashboard/components/anomaly-alerts";
 import { CategoryDonutChart } from "@/features/dashboard/components/category-donut-chart";
-import { InsightsCard } from "@/features/dashboard/components/insights-card";
 import { SummaryBarChart } from "@/features/dashboard/components/summary-bar-chart";
 import { getDebtSummary } from "@/features/debts/actions/debt.actions";
 import { getCategoryBreakdown, getMonthlySummary, getTrend } from "@/features/dashboard/actions/reports.actions";
@@ -50,8 +48,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           Apply range
         </button>
       </form>
-      <AnomalyAlerts />
-
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm text-slate-500">Income</p>
@@ -86,10 +82,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </div>
         </article>
       </div>
-      <InsightsCard
-        month={`${current.year}-${String(current.month).padStart(2, "0")}`}
-      />
-
       <div className="grid gap-6 xl:grid-cols-2">
         <article className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <h3 className="text-base font-semibold text-slate-950 sm:text-lg">Recent transactions</h3>
