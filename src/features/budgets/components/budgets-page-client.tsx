@@ -11,7 +11,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { BudgetCard } from "@/features/budgets/components/budget-card";
-import { BudgetRecommendationsPanel } from "@/features/budgets/components/budget-recommendations-panel";
 import { OverBudgetBanner } from "@/features/budgets/components/over-budget-banner";
 import { Label } from "recharts";
 
@@ -192,8 +191,6 @@ export function BudgetsPageClient({
           </div>
         </div>
       </form>
-
-      <BudgetRecommendationsPanel month={month} year={year} />
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {items.map((item) => (
