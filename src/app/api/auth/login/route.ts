@@ -32,6 +32,10 @@ export async function POST(request: Request) {
         id: result.user.id,
         name: result.user.name,
         email: result.user.email,
+        // Included for mobile Bearer-token clients; web clients use the
+        // httpOnly cookies set below and should ignore these fields.
+        accessToken: result.tokens.accessToken,
+        refreshToken: result.tokens.refreshToken,
       },
     });
 

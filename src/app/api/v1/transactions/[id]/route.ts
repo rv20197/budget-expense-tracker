@@ -2,7 +2,7 @@ import { and, eq } from "drizzle-orm";
 import { ZodError } from "zod";
 
 import { db } from "@/db";
-import { categories, transactions } from "@/db/schema";
+import { categories, transactions, users } from "@/db/schema";
 import {
   badRequest,
   notFound,
@@ -11,7 +11,48 @@ import {
   unauthorized,
 } from "@/lib/api-response";
 import { getSessionFromRequest } from "@/lib/auth/getSessionFromRequest";
+import { toMoneyString } from "@/lib/utils";
 import { transactionSchema } from "@/features/transactions/schemas/finance.schemas";
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const session = await getSessionFromRequest(request);
+  if (!session) return unauthorized();
+  if (!session.user.householdId) return badRequest("No household found.");
+
+  const { id } = await params;
+  const householdId = session.user.householdId;
+
+  const [tx] = await db
+    .select({
+      id: transactions.id,
+      description: transactions.description,
+      amount: transactions.amount,
+      type: transactions.type,
+      transactionDate: transactions.transactionDate,
+      notes: transactions.notes,
+      categoryId: transactions.categoryId,
+      categoryName: categories.name,
+      categoryColor: categories.color,
+      createdBy: transactions.createdBy,
+      addedByName: users.name,
+    })
+    .from(transactions)
+    .innerJoin(categories, eq(categories.id, transactions.categoryId))
+    .innerJoin(users, eq(users.id, transactions.createdBy))
+    .where(and(eq(transactions.id, id), eq(transactions.householdId, householdId)))
+    .limit(1);
+
+  if (!tx) return notFound("Transaction not found.");
+
+  return ok({
+    ...tx,
+    amount: toMoneyString(tx.amount),
+    transactionDate: tx.transactionDate.toISOString().slice(0, 10),
+  });
+}
 
 export async function PUT(
   request: Request,
