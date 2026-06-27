@@ -2,6 +2,7 @@ import {
   boolean,
   check,
   date,
+  doublePrecision,
   index,
   integer,
   numeric,
@@ -138,6 +139,35 @@ export const categories = pgTable(
   ],
 );
 
+export const statementUploads = pgTable(
+  "statement_uploads",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "restrict" }),
+    fileName: text("file_name").notNull(),
+    fileSize: integer("file_size").notNull(),
+    bankName: varchar("bank_name", { length: 100 }).notNull(),
+    statementPeriodStart: date("statement_period_start", { mode: "date" }),
+    statementPeriodEnd: date("statement_period_end", { mode: "date" }),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    totalFound: integer("total_found").notNull().default(0),
+    duplicatesSkipped: integer("duplicates_skipped").notNull().default(0),
+    totalInserted: integer("total_inserted").notNull().default(0),
+    errorMessage: text("error_message"),
+    ...timestamps,
+  },
+  (table) => [
+    index("statement_uploads_household_id_idx").on(table.householdId),
+    index("statement_uploads_created_by_idx").on(table.createdBy),
+    index("statement_uploads_status_idx").on(table.status),
+  ],
+);
+
 export const transactions = pgTable(
   "transactions",
   {
@@ -156,6 +186,12 @@ export const transactions = pgTable(
     amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
     transactionDate: date("transaction_date", { mode: "date" }).notNull(),
     notes: text("notes"),
+    uploadId: uuid("upload_id").references(() => statementUploads.id, {
+      onDelete: "set null",
+    }),
+    rawDescription: text("raw_description"),
+    merchantName: varchar("merchant_name", { length: 255 }),
+    confidenceScore: doublePrecision("confidence_score"),
     ...timestamps,
   },
   (table) => [
@@ -163,6 +199,7 @@ export const transactions = pgTable(
     index("transactions_created_by_idx").on(table.createdBy),
     index("transactions_category_id_idx").on(table.categoryId),
     index("transactions_transaction_date_idx").on(table.transactionDate),
+    index("transactions_upload_id_idx").on(table.uploadId),
   ],
 );
 
@@ -305,6 +342,8 @@ export type NewUser = typeof users.$inferInsert;
 export type Household = typeof households.$inferSelect;
 export type HouseholdMember = typeof householdMembers.$inferSelect;
 export type Category = typeof categories.$inferSelect;
+export type StatementUpload = typeof statementUploads.$inferSelect;
+export type NewStatementUpload = typeof statementUploads.$inferInsert;
 export type Transaction = typeof transactions.$inferSelect;
 export type Budget = typeof budgets.$inferSelect;
 export type RecurringTransaction = typeof recurringTransactions.$inferSelect;

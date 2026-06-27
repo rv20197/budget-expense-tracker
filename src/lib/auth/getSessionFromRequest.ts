@@ -1,3 +1,6 @@
+import { cookies } from "next/headers";
+
+import { ACCESS_COOKIE_NAME } from "@/lib/auth/cookies";
 import { verifyToken } from "@/lib/auth/jwt";
 import { env } from "@/lib/env";
 
@@ -18,17 +21,7 @@ export type RequestSession = {
   };
 };
 
-export async function getSessionFromRequest(
-  request: Request,
-): Promise<RequestSession | null> {
-  const authHeader = request.headers.get("Authorization");
-  const token =
-    authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
-
-  if (!token) {
-    return null;
-  }
-
+async function verifyAccessToken(token: string): Promise<RequestSession | null> {
   try {
     const payload = await verifyToken<AccessTokenPayload>(
       token,
@@ -50,4 +43,27 @@ export async function getSessionFromRequest(
   } catch {
     return null;
   }
+}
+
+export async function getSessionFromRequest(
+  request: Request,
+): Promise<RequestSession | null> {
+  // 1. Prefer Bearer token (mobile clients)
+  const authHeader = request.headers.get("Authorization");
+  const bearerToken =
+    authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+  if (bearerToken) {
+    return verifyAccessToken(bearerToken);
+  }
+
+  // 2. Fall back to httpOnly cookie (same-origin browser fetch)
+  const cookieStore = await cookies();
+  const cookieToken = cookieStore.get(ACCESS_COOKIE_NAME)?.value ?? null;
+
+  if (cookieToken) {
+    return verifyAccessToken(cookieToken);
+  }
+
+  return null;
 }

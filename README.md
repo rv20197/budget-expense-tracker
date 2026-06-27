@@ -117,8 +117,3 @@ The project should be verified with:
 npx tsc --noEmit
 npm run build
 ```
-
-## Notes
-
-- The current workspace used for implementation did not have Docker installed, so migrations were generated but not applied here.
-- The generated SQL migration lives in `drizzle/0000_brown_enchantress.sql`.

@@ -15,6 +15,7 @@ const envSchema = z.object({
   ACCESS_TOKEN_EXPIRES_IN: z.string().default("15m"),
   REFRESH_TOKEN_EXPIRES_IN: z.string().default("7d"),
   BCRYPT_SALT_ROUNDS: z.coerce.number().int().min(8).max(15).default(12),
+  OPENAI_API_KEY: z.string().optional(),
 });
 
 export const env = envSchema.parse({
@@ -26,4 +27,5 @@ export const env = envSchema.parse({
   ACCESS_TOKEN_EXPIRES_IN: process.env.ACCESS_TOKEN_EXPIRES_IN,
   REFRESH_TOKEN_EXPIRES_IN: process.env.REFRESH_TOKEN_EXPIRES_IN,
   BCRYPT_SALT_ROUNDS: process.env.BCRYPT_SALT_ROUNDS,
+  OPENAI_API_KEY: process.env.OPENAI_API_KEY,
 });

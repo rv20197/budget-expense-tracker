@@ -6,6 +6,7 @@ import { useState } from "react";
 import { BulkDeleteBar } from "@/features/transactions/components/bulk-delete-bar";
 import { TransactionForm } from "@/features/transactions/components/transaction-form";
 import { TransactionTable } from "@/features/transactions/components/transaction-table";
+import { UploadStatementModal } from "@/features/statements/components/upload-statement-modal";
 import { Pagination } from "@/components/ui/pagination";
 import { Button } from "@/components/ui/button";
 
@@ -49,6 +50,7 @@ export function TransactionsPageClient({
   const searchParams = useSearchParams();
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isImportOpen, setIsImportOpen] = useState(false);
   const [editingTransaction, setEditingTransaction] =
     useState<TransactionsPageClientProps["items"][number] | null>(null);
 
@@ -96,6 +98,13 @@ export function TransactionsPageClient({
             Export CSV
           </a>
           <Button
+            variant="secondary"
+            onClick={() => setIsImportOpen(true)}
+            className="w-full sm:w-auto"
+          >
+            Import Statement
+          </Button>
+          <Button
             data-add-transaction
             onClick={() => {
               setEditingTransaction(null);
@@ -138,6 +147,13 @@ export function TransactionsPageClient({
       <BulkDeleteBar
         selectedIds={selectedIds}
         onClear={() => setSelectedIds([])}
+      />
+      <UploadStatementModal
+        open={isImportOpen}
+        onClose={() => {
+          setIsImportOpen(false);
+          router.refresh();
+        }}
       />
     </>
   );

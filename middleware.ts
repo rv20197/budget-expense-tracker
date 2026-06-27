@@ -12,6 +12,7 @@ const protectedPaths = [
   "/recurring",
   "/reports",
   "/settings",
+  "/statements",
 ];
 
 const authPaths = ["/login", "/register"];
@@ -87,6 +88,7 @@ export const config = {
     "/recurring/:path*",
     "/reports/:path*",
     "/settings/:path*",
+    "/statements/:path*",
     "/onboarding/:path*",
     "/login",
     "/register",

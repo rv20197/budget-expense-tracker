@@ -16,5 +16,6 @@ export const DASHBOARD_NAV_ITEMS = [
   { href: "/recurring", label: "Recurring" },
   { href: "/debt", label: "Debt" },
   { href: "/reports", label: "Reports" },
+  { href: "/statements", label: "Statements" },
   { href: "/settings", label: "Settings" },
 ] as const;
