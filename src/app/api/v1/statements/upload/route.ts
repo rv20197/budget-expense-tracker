@@ -10,6 +10,12 @@ import {
 } from "@/lib/categorization/aiCategorizer";
 import { parsePDF, type ParsedTransaction } from "@/lib/parsers/pdfParser";
 
+// Vercel serverless functions are frozen after the response is sent, so
+// background tasks (setImmediate, setTimeout) never execute. We process the
+// PDF synchronously before responding. 120s covers large multi-page statements
+// with multiple GPT-4o batches; requires Vercel Pro (Hobby cap is 10s).
+export const maxDuration = 120;
+
 const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15MB
 
 export async function POST(request: Request) {
@@ -78,10 +84,7 @@ export async function POST(request: Request) {
     return serverError("Failed to create upload record.");
   }
 
-  // Kick off async processing (don't await)
-  setImmediate(() =>
-    processStatement(uploadId, buffer, householdId, userId, householdCategories),
-  );
+  await processStatement(uploadId, buffer, householdId, userId, householdCategories);
 
   return ok({ uploadId }, 202);
 }
