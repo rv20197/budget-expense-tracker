@@ -17,17 +17,16 @@ export type CategorizationResult = {
   confidence: number;
 };
 
-// Keyword map: category name fragment → keywords that match it
+// Keyword map: exact category name (lowercase) → keywords that match it
 const KEYWORD_MAP: Record<string, string[]> = {
-  food: ["swiggy", "zomato", "mcdonalds", "kfc", "dominos", "domino", "pizza", "burger", "restaurant", "hotel", "cafe", "coffee", "blinkit", "bigbasket", "grofer", "dunzo", "starbucks", "subway", "bakery"],
-  transport: ["uber", "ola", "metro", "dmrc", "rapido", "irctc", "railway", "bus", "petrol", "diesel", "fuel", "fastag", "toll", "cab", "auto", "rickshaw"],
-  shopping: ["amazon", "flipkart", "myntra", "ajio", "nykaa", "meesho", "snapdeal", "reliance", "dmart", "bigbazaar", "mall", "store", "shop"],
-  entertainment: ["netflix", "prime video", "hotstar", "disney", "spotify", "youtube", "bookmyshow", "pvr", "inox", "cinema", "multiplex"],
-  healthcare: ["apollo", "medplus", "netmeds", "1mg", "pharmeasy", "medlife", "hospital", "clinic", "pharmacy", "doctor", "medical", "health", "diagnostic", "lab"],
-  subscription: ["subscription", "annual fee", "membership", "renewal", "plan", "recharge"],
-  travel: ["makemytrip", "goibibo", "yatra", "cleartrip", "oyo", "airbnb", "flight", "hotel booking", "airport", "air india", "indigo", "spicejet"],
-  utilities: ["electricity", "water", "gas", "broadband", "internet", "jio", "airtel", "vodafone", "bsnl", "vi ", "tata sky", "dish tv", "dth", "bill payment"],
-  salary: ["salary", "sal ", "wages", "payroll", "neft cr", "imps cr", "rtgs cr"],
+  groceries: ["zepto", "blinkit", "avenue supermarts", "dmart", "bigbasket", "grofers", "reliance fresh", "more supermarket", "nature's basket", "supermarket"],
+  shopping:  ["amazon", "asspl", "flipkart", "myntra", "ajio", "nykaa", "meesho", "snapdeal", "gpay", "google pay", "g pay"],
+  fastfood:  ["zomato", "swiggy", "mcdonalds", "mcdonald", "kfc", "dominos", "domino", "pizza", "burger", "subway", "dunzo", "starbucks", "cafe coffee day"],
+  "e-apps":  ["netflix", "prime video", "hotstar", "disney", "spotify", "youtube premium", "zee5", "sonyliv", "apple music"],
+  mobile:    ["bharti air", "airtel", "jio", "vodafone", "vi ", "bsnl", "tata docomo", "mobile recharge", "postpaid"],
+  food:      ["pt foods", "oziva", "restaurant", "hotel", "dhaba", "mess", "tiffin", "bakery", "cafe"],
+  salary:    ["salary", "sal ", "wages", "payroll", "neft cr", "imps cr", "rtgs cr"],
+  freelance: ["freelance", "consulting", "professional fee"],
 };
 
 function keywordFallback(
@@ -43,13 +42,10 @@ function keywordFallback(
       const matched = keywords.some((kw) => lower.includes(kw));
       if (!matched) continue;
 
-      // Find a category whose name contains the key fragment
-      const expectedType = input.type === "credit" ? "income" : "expense";
-      const cat = categories.find(
-        (c) =>
-          c.name.toLowerCase().includes(keyFragment) &&
-          c.type === expectedType,
-      ) ?? categories.find((c) => c.name.toLowerCase().includes(keyFragment));
+        const expectedType = input.type === "credit" ? "income" : "expense";
+      const cat =
+        categories.find((c) => c.name.toLowerCase() === keyFragment && c.type === expectedType) ??
+        categories.find((c) => c.name.toLowerCase() === keyFragment);
 
       if (cat) {
         return {
@@ -106,7 +102,7 @@ async function categorizeBatchWithAI(
   }));
 
   const completion = await client.chat.completions.create({
-    model: "gpt-5.4-mini",
+    model: "gpt-4o-mini",
     max_tokens: 2048,
     messages: [
       {
@@ -141,9 +137,11 @@ export async function categorizeTransactions(
 ): Promise<CategorizationResult[]> {
   if (inputs.length === 0) return [];
 
-  // Determine fallback category (first expense category, or first of any type)
+  // Prefer "Others" as fallback; otherwise first expense category
   const fallbackCategory =
-    categories.find((c) => c.type === "expense") ?? categories[0];
+    categories.find((c) => c.name.toLowerCase() === "others" && c.type === "expense") ??
+    categories.find((c) => c.type === "expense") ??
+    categories[0];
   const fallbackCategoryId = fallbackCategory?.id ?? "";
 
   if (!fallbackCategoryId) {

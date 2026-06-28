@@ -1,11 +1,13 @@
 export const DEFAULT_CATEGORIES = [
-  { name: "Food", type: "expense", color: "#f97316" },
-  { name: "Transport", type: "expense", color: "#0ea5e9" },
-  { name: "Housing", type: "expense", color: "#8b5cf6" },
-  { name: "Healthcare", type: "expense", color: "#ef4444" },
-  { name: "Entertainment", type: "expense", color: "#ec4899" },
-  { name: "Salary", type: "income", color: "#22c55e" },
-  { name: "Freelance", type: "income", color: "#14b8a6" },
+  { name: "Groceries", type: "expense", color: "#4ade80" },
+  { name: "Shopping",  type: "expense", color: "#60a5fa" },
+  { name: "Fastfood",  type: "expense", color: "#fb923c" },
+  { name: "E-Apps",    type: "expense", color: "#a78bfa" },
+  { name: "Mobile",    type: "expense", color: "#22d3ee" },
+  { name: "Food",      type: "expense", color: "#fbbf24" },
+  { name: "Others",    type: "expense", color: "#94a3b8" },
+  { name: "Salary",    type: "income",  color: "#22c55e" },
+  { name: "Freelance", type: "income",  color: "#14b8a6" },
 ] as const;
 
 export const DASHBOARD_NAV_ITEMS = [

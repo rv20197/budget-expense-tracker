@@ -33,6 +33,7 @@ type TransactionsPageClientProps = Readonly<{
   pageSize: number;
   sortBy?: "description" | "categoryName" | "transactionDate" | "amount";
   sortOrder?: "asc" | "desc";
+  groupBy?: "description";
   exportHref: string;
 }>;
 
@@ -44,6 +45,7 @@ export function TransactionsPageClient({
   pageSize,
   sortBy,
   sortOrder,
+  groupBy,
   exportHref,
 }: TransactionsPageClientProps) {
   const router = useRouter();
@@ -59,6 +61,17 @@ export function TransactionsPageClient({
   const handlePageChange = (newPage: number) => {
     const params = new URLSearchParams(searchParams);
     params.set("page", newPage.toString());
+    router.push(`/transactions?${params.toString()}`);
+  };
+
+  const handleGroupBy = (value: "description" | null) => {
+    const params = new URLSearchParams(searchParams);
+    if (value) {
+      params.set("groupBy", value);
+    } else {
+      params.delete("groupBy");
+    }
+    params.set("page", "1");
     router.push(`/transactions?${params.toString()}`);
   };
 
@@ -91,6 +104,16 @@ export function TransactionsPageClient({
           </p>
         </div>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+          <button
+            onClick={() => handleGroupBy(groupBy === "description" ? null : "description")}
+            className={`inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition min-h-[44px] ${
+              groupBy === "description"
+                ? "bg-slate-950 text-white hover:bg-slate-800"
+                : "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50"
+            }`}
+          >
+            Group by Description
+          </button>
           <a
             href={exportHref}
             className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2.5 text-sm font-medium text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-50 min-h-[44px]"
@@ -127,6 +150,7 @@ export function TransactionsPageClient({
         sortBy={sortBy}
         sortOrder={sortOrder}
         onSort={handleSort}
+        groupBy={groupBy}
       />
       <div className="mt-6 flex justify-center">
         <Pagination

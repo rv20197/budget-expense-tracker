@@ -27,6 +27,8 @@ export default async function TransactionsPage({
     ["asc", "desc"].includes(params.sortOrder)
       ? params.sortOrder as "asc" | "desc"
       : undefined;
+  const groupBy =
+    params.groupBy === "description" ? "description" as const : undefined;
 
   const [categories, transactionData] = await Promise.all([
     getCategories(),
@@ -115,6 +117,7 @@ export default async function TransactionsPage({
         pageSize={transactionData.pageSize}
         sortBy={sortBy}
         sortOrder={sortOrder}
+        groupBy={groupBy}
         exportHref={`/api/transactions/export?${exportParams.toString()}`}
       />
     </section>
