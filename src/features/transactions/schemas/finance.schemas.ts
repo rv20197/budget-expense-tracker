@@ -24,28 +24,6 @@ export const transactionSchema = z.object({
   notes: z.string().trim().max(500).optional().or(z.literal("")),
 });
 
-export const budgetSchema = z.object({
-  categoryId: z.string().uuid("Choose a category."),
-  month: z.coerce.number().int().min(1).max(12),
-  year: z.coerce.number().int().min(2020).max(2100),
-  amount: moneyString,
-});
-
-export const recurringTransactionSchema = z.object({
-  id: z.string().uuid().optional(),
-  categoryId: z.string().uuid("Choose a category."),
-  type: z.enum(["income", "expense"]),
-  description: z
-    .string()
-    .trim()
-    .min(2, "Description must be at least 2 characters."),
-  amount: moneyString,
-  frequency: z.enum(["monthly", "yearly"]),
-  startDate: z.string().date("Choose a valid start date."),
-  nextDueDate: z.string().date("Choose a valid next due date."),
-  notes: z.string().trim().max(500).optional().or(z.literal("")),
-  isActive: z.boolean().optional(),
-});
 
 export const deleteAccountSchema = z.object({
   confirmation: z.literal("DELETE", {
@@ -55,6 +33,4 @@ export const deleteAccountSchema = z.object({
 
 export type CategoryInput = z.infer<typeof categorySchema>;
 export type TransactionInput = z.infer<typeof transactionSchema>;
-export type BudgetInput = z.infer<typeof budgetSchema>;
-export type RecurringTransactionInput = z.input<typeof recurringTransactionSchema>;
 export type DeleteAccountInput = z.infer<typeof deleteAccountSchema>;

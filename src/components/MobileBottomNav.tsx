@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   AccountBalance as AccountBalanceIcon,
-  AttachMoney as AttachMoneyIcon,
+  Category as CategoryIcon,
   CreditCard as CreditCardIcon,
   Home as HomeIcon,
 } from "@mui/icons-material";
@@ -12,7 +12,7 @@ import {
 const BOTTOM_NAV_ITEMS = [
   { href: "/dashboard", label: "Dashboard", icon: HomeIcon },
   { href: "/transactions", label: "Transactions", icon: CreditCardIcon },
-  { href: "/budgets", label: "Budgets", icon: AttachMoneyIcon },
+  { href: "/categories", label: "Categories", icon: CategoryIcon },
   { href: "/debt", label: "Debt", icon: AccountBalanceIcon },
 ] as const;
 

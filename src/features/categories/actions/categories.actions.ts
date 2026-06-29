@@ -19,7 +19,6 @@ type RecordScope = "household" | "personal";
 function revalidateCategoryPaths() {
   revalidatePath("/categories");
   revalidatePath("/transactions");
-  revalidatePath("/budgets");
   revalidatePath("/dashboard");
   revalidatePath("/reports");
 }

@@ -98,32 +98,6 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             ))}
           </div>
         </article>
-        <article className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="text-base font-semibold text-slate-950 sm:text-lg">Budget progress</h3>
-          <div className="mt-4 grid gap-3">
-            {summary.budgetRows.length === 0 ? (
-              <p className="text-sm text-slate-500">
-                No budgets set for this month.{" "}
-                <Link href="/budgets" className="text-slate-950 underline underline-offset-2">
-                  Create budgets
-                </Link>{" "}
-                to track your spending.
-              </p>
-            ) : (
-              summary.budgetRows.map((item) => (
-                <div key={item.categoryName} className="rounded-2xl bg-slate-50 p-3 sm:p-4">
-                  <div className="flex items-center justify-between mb-2">
-                    <p className="font-medium text-slate-950 truncate text-sm sm:text-base">{item.categoryName}</p>
-                    <span className="text-xs sm:text-sm text-slate-600 whitespace-nowrap ml-2">₹{item.spentAmount} / ₹{item.budgetAmount}</span>
-                  </div>
-                  <div className="h-3 rounded-full bg-slate-200">
-                    <div className="h-3 rounded-full bg-slate-950" style={{ width: `${Math.min((Number(item.spentAmount) / Math.max(Number(item.budgetAmount), 1)) * 100, 100)}%` }} />
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </article>
       </div>
       <section className="grid gap-4">
         <div>

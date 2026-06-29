@@ -41,7 +41,6 @@ function revalidateTransactionPaths() {
   revalidatePath("/transactions");
   revalidatePath("/dashboard");
   revalidatePath("/reports");
-  revalidatePath("/budgets");
 }
 
 async function assertCategoryAccess(categoryId: string, userId: string, householdId: string) {

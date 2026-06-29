@@ -1,6 +1,5 @@
 import {
   boolean,
-  check,
   date,
   doublePrecision,
   index,
@@ -17,10 +16,6 @@ import {
 import { sql } from "drizzle-orm";
 
 export const categoryTypeEnum = pgEnum("category_type", ["income", "expense"]);
-export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
-  "monthly",
-  "yearly",
-]);
 export const debtDirectionEnum = pgEnum("debt_direction", ["DEBT", "LOAN"]);
 export const debtInterestTypeEnum = pgEnum("debt_interest_type", [
   "NONE",
@@ -203,60 +198,8 @@ export const transactions = pgTable(
   ],
 );
 
-export const budgets = pgTable(
-  "budgets",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    householdId: uuid("household_id")
-      .notNull()
-      .references(() => households.id, { onDelete: "cascade" }),
-    createdBy: uuid("created_by")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    scope: recordScopeEnum("scope").default("household").notNull(),
-    categoryId: uuid("category_id")
-      .notNull()
-      .references(() => categories.id, { onDelete: "cascade" }),
-    month: integer("month").notNull(),
-    year: integer("year").notNull(),
-    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-    ...timestamps,
-  },
-  (table) => [
-    check("budgets_month_check", sql`${table.month} between 1 and 12`),
-    index("budgets_household_id_idx").on(table.householdId),
-    index("budgets_created_by_idx").on(table.createdBy),
-    index("budgets_category_id_idx").on(table.categoryId),
-  ],
-);
 
-export const recurringTransactions = pgTable(
-  "recurring_transactions",
-  {
-    id: uuid("id").defaultRandom().primaryKey(),
-    userId: uuid("user_id")
-      .notNull()
-      .references(() => users.id, { onDelete: "cascade" }),
-    categoryId: uuid("category_id")
-      .notNull()
-      .references(() => categories.id, { onDelete: "restrict" }),
-    type: categoryTypeEnum("type").notNull(),
-    description: text("description").notNull(),
-    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
-    frequency: recurringFrequencyEnum("frequency").notNull(),
-    startDate: date("start_date", { mode: "date" }).notNull(),
-    nextDueDate: date("next_due_date", { mode: "date" }).notNull(),
-    lastProcessedAt: timestamp("last_processed_at", { withTimezone: true }),
-    isActive: boolean("is_active").default(true).notNull(),
-    notes: text("notes"),
-    ...timestamps,
-  },
-  (table) => [
-    index("recurring_transactions_user_id_idx").on(table.userId),
-    index("recurring_transactions_next_due_date_idx").on(table.nextDueDate),
-    index("recurring_transactions_active_idx").on(table.isActive),
-  ],
-);
+
 
 export const debts = pgTable(
   "debts",
@@ -345,8 +288,7 @@ export type Category = typeof categories.$inferSelect;
 export type StatementUpload = typeof statementUploads.$inferSelect;
 export type NewStatementUpload = typeof statementUploads.$inferInsert;
 export type Transaction = typeof transactions.$inferSelect;
-export type Budget = typeof budgets.$inferSelect;
-export type RecurringTransaction = typeof recurringTransactions.$inferSelect;
+
 export type Debt = typeof debts.$inferSelect;
 export type DebtPayment = typeof debtPayments.$inferSelect;
 export type CronHealth = typeof cronHealth.$inferSelect;
