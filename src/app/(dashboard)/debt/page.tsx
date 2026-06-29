@@ -19,7 +19,7 @@ export default async function DebtPage() {
   }
 
   const data = await getDebts();
-  const summary = await getDebtSummary();
+  const summary = await getDebtSummary(session.user.householdId);
   const allItems = [...data.debts, ...data.loans];
   const projectionEntries = await Promise.all(
     allItems.map(async (item) => [item.id, await getPayoffProjection(item.id)] as const),

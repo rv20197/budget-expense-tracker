@@ -402,19 +402,8 @@ export async function deletePayment(
   return { success: true, data: result };
 }
 
-export async function getDebtSummary() {
+export async function getDebtSummary(householdId: string) {
   "use cache";
-
-  const auth = await getAuthContext().catch(() => null);
-
-  if (!auth) {
-    return {
-      dueSoonCount: 0,
-      overdueCount: 0,
-      totalDebt: "0.00",
-      totalLoan: "0.00",
-    };
-  }
 
   const today = new Date();
   const nextWeek = addMonthsClamped(today, 0);
@@ -428,7 +417,7 @@ export async function getDebtSummary() {
       .from(debts)
       .where(
         and(
-          eq(debts.householdId, auth.householdId),
+          eq(debts.householdId, householdId),
           eq(debts.direction, "DEBT"),
           eq(debts.status, "ACTIVE"),
         ),
@@ -440,7 +429,7 @@ export async function getDebtSummary() {
       .from(debts)
       .where(
         and(
-          eq(debts.householdId, auth.householdId),
+          eq(debts.householdId, householdId),
           eq(debts.direction, "LOAN"),
           eq(debts.status, "ACTIVE"),
         ),
@@ -450,7 +439,7 @@ export async function getDebtSummary() {
       .from(debts)
       .where(
         and(
-          eq(debts.householdId, auth.householdId),
+          eq(debts.householdId, householdId),
           eq(debts.status, "ACTIVE"),
           lt(debts.nextPaymentDate, today),
         ),
@@ -460,7 +449,7 @@ export async function getDebtSummary() {
       .from(debts)
       .where(
         and(
-          eq(debts.householdId, auth.householdId),
+          eq(debts.householdId, householdId),
           eq(debts.status, "ACTIVE"),
           gte(debts.nextPaymentDate, today),
           lte(debts.nextPaymentDate, nextWeek),

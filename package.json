@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:full": "concurrently -k -n app,cron -c blue,magenta \"npm:dev\" \"npm:cron\"",
-    "build": "next build",
+    "build": "drizzle-kit push && next build",
     "start": "next start",
     "lint": "eslint .",
     "typecheck": "tsc --noEmit",
