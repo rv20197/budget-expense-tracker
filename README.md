@@ -1,4 +1,4 @@
-# Budget Expense Tracker
+# BudgetWise
 
 Full-stack budget tracker built with Next.js 16.2 App Router, Drizzle ORM, PostgreSQL, hand-rolled JWT auth, Tailwind CSS v4, Recharts, Sonner, React Hook Form, and Zod.
 

@@ -5,7 +5,7 @@ import { Providers } from "@/components/providers";
 import ThemeRegistry from "@/components/ThemeRegistry";
 
 export const metadata: Metadata = {
-  title: "Budget Expense Tracker",
+  title: "BudgetWise",
   description: "Track budgets, categories, transactions, and reports.",
 };
 

@@ -80,8 +80,8 @@ async function signAccessToken(user: SessionUser) {
     .setJti(crypto.randomUUID())
     .setIssuedAt()
     .setExpirationTime(expiresAt)
-    .setAudience("budget-expense-tracker")
-    .setIssuer("budget-expense-tracker")
+    .setAudience("budgetwise")
+    .setIssuer("budgetwise")
     .sign(new TextEncoder().encode(env.JWT_ACCESS_SECRET));
 
   return {
