@@ -13,6 +13,7 @@ import {
   categorySchema,
   type CategoryInput,
 } from "@/features/transactions/schemas/finance.schemas";
+import { logger } from "@/lib/logger";
 
 type RecordScope = "household" | "personal";
 
@@ -39,8 +40,11 @@ export async function getCategories(type?: "income" | "expense") {
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.debug("CategoryActions", "getCategories rejected: Unauthenticated");
     return [];
   }
+
+  logger.debug("CategoryActions", `Fetching categories for household: ${auth.householdId}`, { type });
 
   return db
     .select()
@@ -62,6 +66,7 @@ export async function createCategory(
   input: CategoryInput,
   scope: RecordScope = "household",
 ): Promise<ActionResult<{ id: string }, Extract<keyof CategoryInput, string>>> {
+  logger.info("CategoryActions", `Creating category: ${input.name} (${input.type})`, { scope });
   try {
     const payload = categorySchema.parse(input);
     const { householdId, userId } = await getAuthContext();
@@ -80,8 +85,12 @@ export async function createCategory(
 
     revalidateCategoryPaths();
 
+    logger.info("CategoryActions", `Category created successfully with ID: ${createdCategory.id}`);
     return { success: true, data: createdCategory };
   } catch (error) {
+    logger.error("CategoryActions", `Error creating category: ${input.name}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return error instanceof ZodError
       ? validationError<Extract<keyof CategoryInput, string>>(error)
       : unexpectedError(
@@ -94,16 +103,19 @@ export async function updateCategory(
   categoryId: string,
   input: CategoryInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof CategoryInput, string>>> {
+  logger.info("CategoryActions", `Updating category: ${categoryId}`, input);
   try {
     const payload = categorySchema.parse(input);
     const { householdId, userId } = await getAuthContext();
     const category = await getCategoryForMutation(categoryId, householdId);
 
     if (!category) {
+      logger.warn("CategoryActions", `Category not found: ${categoryId}`);
       return { success: false, error: "Category not found." };
     }
 
     if (category.scope === "personal" && category.createdBy !== userId) {
+      logger.warn("CategoryActions", `Permission denied updating personal category: ${categoryId}`);
       return {
         success: false,
         error: "Cannot edit another member's personal category.",
@@ -122,8 +134,12 @@ export async function updateCategory(
 
     revalidateCategoryPaths();
 
+    logger.info("CategoryActions", `Category updated successfully: ${categoryId}`);
     return { success: true, data: updatedCategory };
   } catch (error) {
+    logger.error("CategoryActions", `Error updating category: ${categoryId}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return error instanceof ZodError
       ? validationError<Extract<keyof CategoryInput, string>>(error)
       : unexpectedError(
@@ -135,19 +151,23 @@ export async function updateCategory(
 export async function deleteCategory(
   categoryId: string,
 ): Promise<ActionResult<{ id: string }>> {
+  logger.info("CategoryActions", `Delete category requested: ${categoryId}`);
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.warn("CategoryActions", "deleteCategory rejected: Unauthorized");
     return { success: false, error: "Unauthorized." };
   }
 
   const category = await getCategoryForMutation(categoryId, auth.householdId);
 
   if (!category) {
+    logger.warn("CategoryActions", `Category not found for deletion: ${categoryId}`);
     return { success: false, error: "Category not found." };
   }
 
   if (category.scope === "personal" && category.createdBy !== auth.userId) {
+    logger.warn("CategoryActions", `Permission denied deleting personal category: ${categoryId}`);
     return {
       success: false,
       error: "Cannot delete another member's personal category.",
@@ -165,6 +185,7 @@ export async function deleteCategory(
     );
 
   if (Number(usage?.count ?? 0) > 0) {
+    logger.warn("CategoryActions", `Category ${categoryId} has existing transactions (${usage?.count})`);
     return {
       success: false,
       error: "This category has transactions. Reassign them before deleting.",
@@ -178,6 +199,7 @@ export async function deleteCategory(
 
   revalidateCategoryPaths();
 
+  logger.info("CategoryActions", `Category deleted successfully: ${categoryId}`);
   return { success: true, data: deletedCategory };
 }
 
@@ -185,9 +207,11 @@ export async function reassignCategoryTransactions(
   categoryId: string,
   targetCategoryId: string,
 ): Promise<ActionResult<{ id: string }>> {
+  logger.info("CategoryActions", `Reassigning transactions from ${categoryId} to ${targetCategoryId}`);
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.warn("CategoryActions", "reassignCategoryTransactions rejected: Unauthorized");
     return { success: false, error: "Unauthorized." };
   }
 
@@ -202,6 +226,7 @@ export async function reassignCategoryTransactions(
   const target = await getCategoryForMutation(targetCategoryId, auth.householdId);
 
   if (!source || !target) {
+    logger.warn("CategoryActions", "Source or target category not found during reassignment");
     return { success: false, error: "Category not found." };
   }
 
@@ -235,5 +260,6 @@ export async function reassignCategoryTransactions(
 
   revalidateCategoryPaths();
 
+  logger.info("CategoryActions", `Reassigned transactions and deleted source category ${categoryId}`);
   return { success: true, data: { id: categoryId } };
 }

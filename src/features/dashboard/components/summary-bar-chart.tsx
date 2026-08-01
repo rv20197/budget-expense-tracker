@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatCurrency } from "@/lib/utils";
 
 type SummaryBarChartProps = Readonly<{
   data: Array<{ label: string; income: number; expense: number }>;
@@ -21,8 +22,8 @@ export function SummaryBarChart({ data }: SummaryBarChartProps) {
         <BarChart data={data}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="label" tickLine={false} axisLine={false} />
-          <YAxis tickLine={false} axisLine={false} />
-          <Tooltip />
+          <YAxis tickLine={false} axisLine={false} tickFormatter={(val) => formatCurrency(val)} />
+          <Tooltip formatter={(value: any) => [formatCurrency(Number(value || 0)), "Amount"]} />
           <Bar dataKey="income" fill="#16a34a" radius={[10, 10, 0, 0]} />
           <Bar dataKey="expense" fill="#0f172a" radius={[10, 10, 0, 0]} />
         </BarChart>

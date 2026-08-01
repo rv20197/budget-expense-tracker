@@ -43,6 +43,13 @@
       "when": 1748000002000,
       "tag": "0005_statement_uploads",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1775396049000,
+      "tag": "0006_add_user_currency",
+      "breakpoints": true
     }
   ]
 }

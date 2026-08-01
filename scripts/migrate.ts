@@ -3,6 +3,7 @@ import "dotenv/config";
 import { drizzle } from "drizzle-orm/node-postgres";
 import { migrate } from "drizzle-orm/node-postgres/migrator";
 import { Pool } from "pg";
+import { logger } from "../src/lib/logger";
 
 async function createDatabaseIfNotExists(connectionString: string) {
   if (!connectionString) {
@@ -25,10 +26,10 @@ async function createDatabaseIfNotExists(connectionString: string) {
     const client = await adminPool.connect();
     try {
       await client.query(`CREATE DATABASE "${databaseName}"`);
-      console.log(`[migrate] Created database \"${databaseName}\".`);
+      logger.info("MigrateScript", `Created database "${databaseName}"`);
     } catch (error: any) {
       if (error.code === "42P04") {
-        console.log(`[migrate] Database \"${databaseName}\" already exists.`);
+        logger.info("MigrateScript", `Database "${databaseName}" already exists`);
       } else {
         throw error;
       }
@@ -46,7 +47,9 @@ async function runMigrations() {
   try {
     await createDatabaseIfNotExists(databaseUrl ?? "");
   } catch (error) {
-    console.error("[migrate] Failed to create database:", error);
+    logger.error("MigrateScript", "Failed to check or create database", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     process.exit(1);
   }
 
@@ -57,11 +60,13 @@ async function runMigrations() {
   const db = drizzle(pool);
 
   try {
-    console.log("[migrate] Starting migrations...");
+    logger.info("MigrateScript", "Starting migrations...");
     await migrate(db, { migrationsFolder: "./src/db/migrations" });
-    console.log("[migrate] Migrations completed successfully.");
+    logger.info("MigrateScript", "Migrations completed successfully.");
   } catch (error) {
-    console.error("[migrate] Migration failed:", error);
+    logger.error("MigrateScript", "Migration execution failed", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     process.exit(1);
   } finally {
     await pool.end();

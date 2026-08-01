@@ -16,6 +16,7 @@ import { comparePassword, hashPassword } from "@/lib/auth/password";
 import { checkRateLimit, resetRateLimit } from "@/lib/auth/rate-limit";
 import { verifyToken } from "@/lib/auth/jwt";
 import type { LoginInput, RegisterInput } from "@/features/auth/schemas/auth.schemas";
+import { logger } from "@/lib/logger";
 
 type TokenBundle = {
   accessToken: string;
@@ -210,9 +211,12 @@ export async function registerUser(input: RegisterInput) {
 }
 
 export async function loginUser(input: LoginInput, ipAddress: string) {
+  logger.info("AuthService", `Login attempt started for email: ${input.email} from IP: ${ipAddress}`);
+
   const rateLimit = checkRateLimit(ipAddress);
 
   if (!rateLimit.success) {
+    logger.warn("AuthService", `Rate limit exceeded for IP: ${ipAddress}`, { retryAfterMs: rateLimit.retryAfterMs });
     return {
       success: false as const,
       error: "Too many login attempts. Please try again later.",
@@ -223,39 +227,55 @@ export async function loginUser(input: LoginInput, ipAddress: string) {
   const user = await getUserByEmail(input.email);
 
   if (!user) {
+    logger.warn("AuthService", `User not found for email: ${input.email}`);
     return {
       success: false as const,
       error: "Invalid email or password.",
     };
   }
+
+  logger.info("AuthService", `User found: ${user.id} (${user.email}). Verifying password...`);
 
   const isPasswordValid = await comparePassword(input.password, user.passwordHash);
 
   if (!isPasswordValid) {
+    logger.warn("AuthService", `Password verification failed for user: ${user.email}`);
     return {
       success: false as const,
       error: "Invalid email or password.",
     };
   }
 
+  logger.info("AuthService", `Password verified successfully for user: ${user.email}`);
+
   resetRateLimit(ipAddress);
 
   const householdId = await getHouseholdIdForUser(user.id);
-  const tokens = await createTokenBundle({
-    id: user.id,
-    name: user.name,
-    email: user.email,
-    householdId,
-  });
+  logger.info("AuthService", `User ${user.email} householdId: ${householdId ?? "NONE"}`);
 
-  return {
-    success: true as const,
-    user: {
-      ...user,
+  try {
+    const tokens = await createTokenBundle({
+      id: user.id,
+      name: user.name,
+      email: user.email,
       householdId,
-    },
-    tokens,
-  };
+    });
+    logger.info("AuthService", `Tokens issued successfully for user: ${user.email}`);
+
+    return {
+      success: true as const,
+      user: {
+        ...user,
+        householdId,
+      },
+      tokens,
+    };
+  } catch (error) {
+    logger.error("AuthService", `Error creating token bundle for user: ${user.email}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    throw error;
+  }
 }
 
 export async function refreshUserSession(refreshToken: string) {

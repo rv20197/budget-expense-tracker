@@ -1,4 +1,6 @@
 import Decimal from "decimal.js";
+import { getClientCurrency } from "./currencyContext";
+import { SUPPORTED_CURRENCIES } from "./currencies";
 
 export function toDecimal(value: Decimal.Value) {
   return new Decimal(value);
@@ -8,11 +10,19 @@ export function toMoneyString(value: Decimal.Value) {
   return toDecimal(value).toFixed(2);
 }
 
-export function formatCurrency(value: Decimal.Value, currency = "INR") {
-  return new Intl.NumberFormat("en-US", {
-    style: "currency",
-    currency,
-  }).format(toDecimal(value).toNumber());
+export function formatCurrency(value: Decimal.Value, currency?: string) {
+  const code = currency || getClientCurrency();
+  const config = SUPPORTED_CURRENCIES[code] || SUPPORTED_CURRENCIES.INR;
+
+  try {
+    return new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: config.code,
+      maximumFractionDigits: config.code === "JPY" ? 0 : 2,
+    }).format(toDecimal(value).toNumber());
+  } catch {
+    return `${config.symbol}${toDecimal(value).toFixed(2)}`;
+  }
 }
 
 export function formatDate(value: Date | string) {

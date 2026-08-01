@@ -12,11 +12,18 @@ import {
 import { getSessionFromRequest } from "@/lib/auth/getSessionFromRequest";
 import { toMoneyString } from "@/lib/utils";
 import { transactionSchema } from "@/features/transactions/schemas/finance.schemas";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
   const session = await getSessionFromRequest(request);
-  if (!session) return unauthorized();
-  if (!session.user.householdId) return badRequest("No household found.");
+  if (!session) {
+    logger.warn("ApiTransactions", "GET /api/v1/transactions - Unauthorized");
+    return unauthorized();
+  }
+  if (!session.user.householdId) {
+    logger.warn("ApiTransactions", "GET /api/v1/transactions - No household");
+    return badRequest("No household found.");
+  }
 
   const { householdId } = { householdId: session.user.householdId };
   const { searchParams } = new URL(request.url);
@@ -31,6 +38,8 @@ export async function GET(request: Request) {
   const to = searchParams.get("to") ?? undefined;
   const page = Math.max(Number(searchParams.get("page") ?? "1"), 1);
   const pageSize = Math.min(Math.max(Number(searchParams.get("pageSize") ?? "20"), 1), 50);
+
+  logger.debug("ApiTransactions", `GET /api/v1/transactions for household: ${householdId}`, { search, categoryId, type, page });
 
   const conditions = [eq(transactions.householdId, householdId)];
   if (search) conditions.push(ilike(transactions.description, `%${search}%`));
@@ -81,8 +90,14 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   const session = await getSessionFromRequest(request);
-  if (!session) return unauthorized();
-  if (!session.user.householdId) return badRequest("No household found.");
+  if (!session) {
+    logger.warn("ApiTransactions", "POST /api/v1/transactions - Unauthorized");
+    return unauthorized();
+  }
+  if (!session.user.householdId) {
+    logger.warn("ApiTransactions", "POST /api/v1/transactions - No household");
+    return badRequest("No household found.");
+  }
 
   const { userId, householdId } = {
     userId: session.user.id,
@@ -91,6 +106,8 @@ export async function POST(request: Request) {
 
   try {
     const body = await request.json();
+    logger.info("ApiTransactions", `POST /api/v1/transactions by user ${userId}`, body);
+
     const payload = transactionSchema.parse(body);
 
     const [category] = await db
@@ -104,7 +121,10 @@ export async function POST(request: Request) {
       )
       .limit(1);
 
-    if (!category) return badRequest("Category not found.");
+    if (!category) {
+      logger.warn("ApiTransactions", `Category ${payload.categoryId} not found for household ${householdId}`);
+      return badRequest("Category not found.");
+    }
 
     const [created] = await db
       .insert(transactions)
@@ -120,8 +140,12 @@ export async function POST(request: Request) {
       })
       .returning({ id: transactions.id });
 
+    logger.info("ApiTransactions", `Transaction created via API: ${created.id}`);
     return ok(created, 201);
   } catch (error) {
+    logger.error("ApiTransactions", "Error in POST /api/v1/transactions", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     if (error instanceof ZodError) {
       return badRequest("Validation failed.", error.flatten().fieldErrors as Record<string, string[]>);
     }

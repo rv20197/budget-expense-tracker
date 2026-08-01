@@ -1,3 +1,5 @@
+import { getClientCurrency } from "./currencyContext";
+import { SUPPORTED_CURRENCIES } from "./currencies";
 import { formatCurrency } from "./utils";
 
 const ONES = [
@@ -85,12 +87,51 @@ export function numberToWords(num: number): string {
 }
 
 /**
+ * Converts a non-negative integer to words using the Standard numbering system (Billion, Million, Thousand).
+ */
+export function numberToWordsStandard(num: number): string {
+  if (num === 0) return "Zero";
+  if (num < 0) return "Minus " + numberToWordsStandard(Math.abs(num));
+
+  let n = Math.floor(num);
+  let words = "";
+
+  const billion = Math.floor(n / 1000000000);
+  n %= 1000000000;
+
+  const million = Math.floor(n / 1000000);
+  n %= 1000000;
+
+  const thousand = Math.floor(n / 1000);
+  n %= 1000;
+
+  if (billion > 0) {
+    words += (words ? " " : "") + convertBelowThousand(billion) + " Billion";
+  }
+  if (million > 0) {
+    words += (words ? " " : "") + convertBelowThousand(million) + " Million";
+  }
+  if (thousand > 0) {
+    words += (words ? " " : "") + convertBelowThousand(thousand) + " Thousand";
+  }
+  if (n > 0) {
+    words += (words ? " " : "") + convertBelowThousand(n);
+  }
+
+  return words.trim();
+}
+
+/**
  * Formats an amount input string into currency format and words helper text.
- * E.g., "1250.50" => "₹1,250.50 (One Thousand Two Hundred Fifty Rupees and Fifty Paise)"
+ * E.g., "1250.50" => "$1,250.50 (One Thousand Two Hundred Fifty Dollars and Fifty Cents)"
  */
 export function formatAmountInWords(
   amountStr: unknown,
+  currencyCode?: string,
 ): string | null {
+  const code = currencyCode || getClientCurrency();
+  const config = SUPPORTED_CURRENCIES[code] || SUPPORTED_CURRENCIES.INR;
+
   if (amountStr == null) return null;
 
   const raw = Array.isArray(amountStr) ? amountStr.join("") : String(amountStr);
@@ -102,28 +143,35 @@ export function formatAmountInWords(
     return null;
   }
 
-  let rupees = Math.floor(num);
-  let paise = Math.round((num - rupees) * 100);
+  let units = Math.floor(num);
+  let subunits = Math.round((num - units) * 100);
 
-  if (paise === 100) {
-    rupees += 1;
-    paise = 0;
+  if (subunits === 100) {
+    units += 1;
+    subunits = 0;
   }
 
-  const rupeesWords = rupees > 0 ? numberToWords(rupees) : "";
-  const paiseWords = paise > 0 ? numberToWords(paise) : "";
+  const isIndian = config.system === "indian";
+  const toWords = isIndian ? numberToWords : numberToWordsStandard;
+
+  const unitsWords = units > 0 ? toWords(units) : "";
+  const subunitsWords =
+    subunits > 0 && config.subunitSingular ? toWords(subunits) : "";
+
+  const unitLabel = units === 1 ? config.unitSingular : config.unitPlural;
+  const subunitLabel = subunits === 1 ? config.subunitSingular : config.subunitPlural;
 
   let words = "";
-  if (rupees > 0 && paise > 0) {
-    words = `${rupeesWords} ${rupees === 1 ? "Rupee" : "Rupees"} and ${paiseWords} ${paise === 1 ? "Paisa" : "Paise"}`;
-  } else if (rupees > 0) {
-    words = `${rupeesWords} ${rupees === 1 ? "Rupee" : "Rupees"}`;
-  } else if (paise > 0) {
-    words = `${paiseWords} ${paise === 1 ? "Paisa" : "Paise"}`;
+  if (units > 0 && subunits > 0 && subunitLabel) {
+    words = `${unitsWords} ${unitLabel} and ${subunitsWords} ${subunitLabel}`;
+  } else if (units > 0) {
+    words = `${unitsWords} ${unitLabel}`;
+  } else if (subunits > 0 && subunitLabel) {
+    words = `${subunitsWords} ${subunitLabel}`;
   } else {
-    words = "Zero Rupees";
+    words = `Zero ${config.unitPlural}`;
   }
 
-  const formattedCurrency = formatCurrency(num);
+  const formattedCurrency = formatCurrency(num, code);
   return `${formattedCurrency} (${words})`;
 }

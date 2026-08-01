@@ -3,13 +3,14 @@
 import Link from "next/link";
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { useForm } from "react-hook-form";
+import { Controller, useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { toast } from "sonner";
 
 import {
   changePassword,
   deleteAccount,
+  updateCurrency,
   updateProfile,
 } from "@/features/auth/actions/user.actions";
 import {
@@ -20,24 +21,44 @@ import {
 } from "@/features/auth/schemas/auth.schemas";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Select } from "@/components/ui/select";
+import { SUPPORTED_CURRENCIES } from "@/lib/currencies";
+import { useCurrency } from "@/lib/currencyContext";
 
 type SettingsPageClientProps = Readonly<{
   user: {
     name: string;
     email: string;
+    currency: string;
   };
   hasHousehold: boolean;
 }>;
 
+const CURRENCY_OPTIONS = Object.values(SUPPORTED_CURRENCIES).map((item) => ({
+  label: item.name,
+  value: item.code,
+}));
+
 export function SettingsPageClient({ user, hasHousehold }: SettingsPageClientProps) {
   const router = useRouter();
+  const { currency, setCurrency } = useCurrency();
+
   const [isProfilePending, startProfileTransition] = useTransition();
+  const [isCurrencyPending, startCurrencyTransition] = useTransition();
   const [isPasswordPending, startPasswordTransition] = useTransition();
   const [isDeletePending, startDeleteTransition] = useTransition();
+
   const profileForm = useForm<UpdateProfileInput>({
     resolver: zodResolver(updateProfileSchema),
     defaultValues: user,
   });
+
+  const currencyForm = useForm<{ currency: string }>({
+    defaultValues: {
+      currency: user.currency || currency,
+    },
+  });
+
   const passwordForm = useForm<ChangePasswordInput>({
     resolver: zodResolver(changePasswordSchema),
     defaultValues: {
@@ -86,6 +107,42 @@ export function SettingsPageClient({ user, hasHousehold }: SettingsPageClientPro
             {isProfilePending ? "Saving..." : "Save profile"}
           </Button>
         </form>
+
+        <form
+          className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-6"
+          onSubmit={currencyForm.handleSubmit((values) =>
+            startCurrencyTransition(async () => {
+              const result = await updateCurrency(values.currency);
+
+              if (!result.success) {
+                toast.error(result.error);
+                return;
+              }
+
+              setCurrency(values.currency);
+              toast.success("Currency format updated.");
+              router.refresh();
+            }),
+          )}
+        >
+          <div>
+            <h2 className="text-lg sm:text-xl font-semibold text-slate-950">Currency format</h2>
+            <p className="mt-1 text-sm text-slate-600">
+              Choose your preferred currency format for numbers, amounts, and helper text.
+            </p>
+          </div>
+          <Controller
+            name="currency"
+            control={currencyForm.control}
+            render={({ field }) => (
+              <Select label="Currency format" options={CURRENCY_OPTIONS} {...field} />
+            )}
+          />
+          <Button type="submit" disabled={isCurrencyPending} className="w-full sm:w-auto">
+            {isCurrencyPending ? "Saving..." : "Save currency"}
+          </Button>
+        </form>
+
         <form
           className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-6"
           onSubmit={passwordForm.handleSubmit((values) =>
@@ -125,6 +182,7 @@ export function SettingsPageClient({ user, hasHousehold }: SettingsPageClientPro
             {isPasswordPending ? "Updating..." : "Change password"}
           </Button>
         </form>
+
         {hasHousehold ? (
           <article className="grid gap-4 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-6">
             <div>
@@ -149,6 +207,7 @@ export function SettingsPageClient({ user, hasHousehold }: SettingsPageClientPro
           </article>
         ) : null}
       </div>
+
       <div className="rounded-[28px] border border-red-200 bg-red-50 p-4 sm:p-6">
         <h2 className="text-lg sm:text-xl font-semibold text-red-800">Delete account</h2>
         <p className="mt-2 text-sm text-red-700">

@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "currency" varchar(10) DEFAULT 'INR' NOT NULL;

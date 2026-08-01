@@ -1,6 +1,7 @@
 "use client";
 
 import { Cell, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts";
+import { formatCurrency } from "@/lib/utils";
 
 type CategoryDonutChartProps = Readonly<{
   data: Array<{ categoryName: string; categoryColor: string; total: number }>;
@@ -23,7 +24,7 @@ export function CategoryDonutChart({ data }: CategoryDonutChartProps) {
               <Cell key={entry.categoryName} fill={entry.categoryColor} />
             ))}
           </Pie>
-          <Tooltip />
+          <Tooltip formatter={(value: any) => [formatCurrency(Number(value || 0)), "Total"]} />
         </PieChart>
       </ResponsiveContainer>
     </div>

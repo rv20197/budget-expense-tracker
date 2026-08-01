@@ -21,6 +21,7 @@ import {
   type RecordPaymentInput,
   type UpdateDebtInput,
 } from "@/features/debts/schemas/debt.schemas";
+import { logger } from "@/lib/logger";
 
 function revalidateDebtPaths() {
   revalidatePath("/debt");
@@ -34,8 +35,6 @@ function decimal(value: Decimal.Value) {
 function mapDebtRow(row: typeof debts.$inferSelect & { addedByName: string }) {
   const principal = decimal(row.principal);
   const remainingBalance = decimal(row.remainingBalance);
-  // amountPaid is derived from the DB-maintained remainingBalance so we
-  // don't need to load or sum payment rows to display the progress bar.
   const amountPaid = Decimal.max(principal.minus(remainingBalance), 0);
 
   return {
@@ -91,8 +90,11 @@ export async function getDebts() {
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.debug("DebtActions", "getDebts rejected: Unauthenticated");
     return { debts: [], loans: [] };
   }
+
+  logger.debug("DebtActions", `Fetching debts for household: ${auth.householdId}`);
 
   const debtRows = await db
     .select({
@@ -126,8 +128,6 @@ export async function getDebts() {
       desc(debts.createdAt),
     );
 
-  // amountPaid is derived from principal − remainingBalance (maintained by
-  // recordPayment). No need to load individual payment rows here.
   const mapped = debtRows.map(mapDebtRow);
 
   return {
@@ -139,6 +139,7 @@ export async function getDebts() {
 export async function createDebt(
   input: CreateDebtInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof CreateDebtInput, string>>> {
+  logger.info("DebtActions", `Creating debt record: ${input.name} (${input.direction})`, input);
   try {
     const payload = createDebtSchema.parse(input);
     const { householdId, userId } = await getAuthContext();
@@ -172,8 +173,12 @@ export async function createDebt(
 
     revalidateDebtPaths();
 
+    logger.info("DebtActions", `Debt created successfully: ${createdDebt.id}`);
     return { success: true, data: createdDebt };
   } catch (error) {
+    logger.error("DebtActions", `Error creating debt: ${input.name}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return error instanceof ZodError
       ? validationError<Extract<keyof CreateDebtInput, string>>(error)
       : unexpectedError(error instanceof Error ? error.message : "Unable to create debt.");
@@ -183,7 +188,8 @@ export async function createDebt(
 export async function updateDebt(
   debtId: string,
   input: UpdateDebtInput,
-): Promise<ActionResult<{ id: string }, Extract<keyof UpdateDebtInput, string>>> {
+): Promise<ActionResult<{ id: string }, Extract<keyof CreateDebtInput, string>>> {
+  logger.info("DebtActions", `Updating debt record ${debtId}`, input);
   try {
     const payload = updateDebtSchema.parse(input);
     const { householdId } = await getAuthContext();
@@ -211,13 +217,18 @@ export async function updateDebt(
       .returning({ id: debts.id });
 
     if (!updatedDebt) {
+      logger.warn("DebtActions", `Debt not found for update: ${debtId}`);
       return { success: false, error: "Debt not found." };
     }
 
     revalidateDebtPaths();
 
+    logger.info("DebtActions", `Debt updated successfully: ${debtId}`);
     return { success: true, data: updatedDebt };
   } catch (error) {
+    logger.error("DebtActions", `Error updating debt: ${debtId}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return error instanceof ZodError
       ? validationError<Extract<keyof UpdateDebtInput, string>>(error)
       : unexpectedError(error instanceof Error ? error.message : "Unable to update debt.");
@@ -228,16 +239,19 @@ export async function recordPayment(
   debtId: string,
   input: RecordPaymentInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof RecordPaymentInput, string>>> {
+  logger.info("DebtActions", `Recording payment for debt ${debtId}: ${input.amount}`, input);
   try {
     const payload = recordPaymentSchema.parse(input);
     const { householdId, userId } = await getAuthContext();
     const debt = await getDebtForHousehold(debtId, householdId);
 
     if (!debt) {
+      logger.warn("DebtActions", `Debt not found for payment: ${debtId}`);
       return { success: false, error: "Debt not found." };
     }
 
     if (debt.status !== "ACTIVE") {
+      logger.warn("DebtActions", `Payment attempted on inactive debt ${debtId} (status: ${debt.status})`);
       return {
         success: false,
         error: "Payments can only be recorded on active debts.",
@@ -248,6 +262,7 @@ export async function recordPayment(
     const remainingBalance = decimal(debt.remainingBalance);
 
     if (paymentAmount.gt(remainingBalance)) {
+      logger.warn("DebtActions", `Payment ${paymentAmount} exceeds remaining balance ${remainingBalance} for debt ${debtId}`);
       return {
         success: false,
         error: "Amount exceeds remaining balance",
@@ -298,8 +313,12 @@ export async function recordPayment(
 
     revalidateDebtPaths();
 
+    logger.info("DebtActions", `Recorded payment ${createdPaymentId} for debt ${debtId}. Status: ${nextStatus}, NextDueDate: ${nextDueDate}`);
     return { success: true, data: { id: createdPaymentId } };
   } catch (error) {
+    logger.error("DebtActions", `Error recording payment for debt: ${debtId}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return error instanceof ZodError
       ? validationError<Extract<keyof RecordPaymentInput, string>>(error)
       : unexpectedError(error instanceof Error ? error.message : "Unable to record payment.");
@@ -309,9 +328,11 @@ export async function recordPayment(
 export async function cancelDebt(
   debtId: string,
 ): Promise<ActionResult<{ id: string }>> {
+  logger.info("DebtActions", `Cancelling debt: ${debtId}`);
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.warn("DebtActions", "cancelDebt rejected: Unauthorized");
     return { success: false, error: "Unauthorized." };
   }
 
@@ -324,20 +345,24 @@ export async function cancelDebt(
     .returning({ id: debts.id });
 
   if (!updatedDebt) {
+    logger.warn("DebtActions", `Debt not found for cancellation: ${debtId}`);
     return { success: false, error: "Debt not found." };
   }
 
   revalidateDebtPaths();
 
+  logger.info("DebtActions", `Debt cancelled successfully: ${debtId}`);
   return { success: true, data: updatedDebt };
 }
 
 export async function deletePayment(
   paymentId: string,
 ): Promise<ActionResult<{ id: string }>> {
+  logger.info("DebtActions", `Deleting debt payment: ${paymentId}`);
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.warn("DebtActions", "deletePayment rejected: Unauthorized");
     return { success: false, error: "Unauthorized." };
   }
 
@@ -357,6 +382,7 @@ export async function deletePayment(
     .limit(1);
 
   if (!payment) {
+    logger.warn("DebtActions", `Payment not found for deletion: ${paymentId}`);
     return { success: false, error: "Payment not found." };
   }
 
@@ -406,6 +432,7 @@ export async function deletePayment(
 
   revalidateDebtPaths();
 
+  logger.info("DebtActions", `Payment deleted successfully: ${paymentId}`);
   return { success: true, data: result };
 }
 
@@ -519,8 +546,6 @@ export async function getPaymentHistory(
     return null;
   }
 
-  // Verify the debt belongs to the authenticated household before
-  // exposing any payment data.
   const debt = await getDebtForHousehold(debtId, auth.householdId);
 
   if (!debt) {

@@ -6,7 +6,7 @@ import { SummaryBarChart } from "@/features/dashboard/components/summary-bar-cha
 import { getDebtSummary } from "@/features/debts/actions/debt.actions";
 import { getCategoryBreakdown, getMonthlySummary, getTrend } from "@/features/dashboard/actions/reports.actions";
 import { getSession } from "@/lib/auth/session";
-import { endOfMonth, getCurrentMonthYear, startOfMonth } from "@/lib/utils";
+import { endOfMonth, formatCurrency, getCurrentMonthYear, startOfMonth } from "@/lib/utils";
 
 type DashboardPageProps = {
   searchParams?: Promise<Record<string, string | string[] | undefined>>;
@@ -23,6 +23,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     redirect("/onboarding");
   }
 
+  const currency = session.user.currency;
   const params = (await searchParams) ?? {};
   const current = getCurrentMonthYear();
   const from = typeof params.from === "string" ? params.from : startOfMonth(current.month, current.year).toISOString().slice(0, 10);
@@ -39,6 +40,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     getDebtSummary(session.user.householdId),
   ]);
 
+  const rawIncome = Number(summary.income.replace(/[^0-9.-]+/g, "")) || 0;
+  const rawExpense = Number(summary.expense.replace(/[^0-9.-]+/g, "")) || 0;
+  const netInhand = rawIncome - rawExpense;
+
   return (
     <section className="grid gap-6">
       <form className="flex flex-col gap-3 rounded-[28px] border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:flex-wrap sm:p-5">
@@ -51,11 +56,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <div className="grid gap-4 grid-cols-2 sm:grid-cols-2 lg:grid-cols-4">
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm text-slate-500">Income</p>
-          <h2 className="mt-2 text-2xl font-semibold text-emerald-600 sm:text-3xl">₹{summary.income}</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-emerald-600 sm:text-3xl">
+            {formatCurrency(summary.income, currency)}
+          </h2>
         </article>
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm text-slate-500">Expense</p>
-          <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">₹{summary.expense}</h2>
+          <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">
+            {formatCurrency(summary.expense, currency)}
+          </h2>
         </article>
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
           <p className="text-sm text-slate-500">Period</p>
@@ -64,7 +73,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         <article className="rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5 lg:col-span-1">
           <p className="text-sm text-slate-500">Net Inhand</p>
           <h2 className="mt-2 text-2xl font-semibold text-slate-950 sm:text-3xl">
-            ₹{(Number(summary.income.replace(/[$,]/g, '')) - Number(summary.expense.replace(/[$,]/g, ''))).toFixed(2)}
+            {formatCurrency(netInhand, currency)}
           </h2>
         </article>
       </div>
@@ -93,7 +102,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   <p className="text-sm text-slate-600 hidden sm:block">{item.categoryName} • {item.transactionDate}</p>
                   <p className="text-sm text-slate-600 sm:hidden">{item.transactionDate}</p>
                 </div>
-                <span className="font-semibold text-slate-950 ml-2 shrink-0 whitespace-nowrap">₹{item.amount}</span>
+                <span className="font-semibold text-slate-950 ml-2 shrink-0 whitespace-nowrap">
+                  {formatCurrency(item.amount, currency)}
+                </span>
               </div>
             ))}
           </div>
@@ -113,7 +124,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <p className="text-sm text-slate-500">Total I Owe</p>
             <h4 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-              ₹{debtSummary.totalDebt}
+              {formatCurrency(debtSummary.totalDebt, currency)}
             </h4>
           </Link>
           <Link
@@ -122,7 +133,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <p className="text-sm text-slate-500">Total Owed to Me</p>
             <h4 className="mt-2 text-xl font-semibold text-slate-950 sm:text-2xl">
-              ₹{debtSummary.totalLoan}
+              {formatCurrency(debtSummary.totalLoan, currency)}
             </h4>
           </Link>
           <Link
@@ -131,7 +142,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           >
             <p className="text-sm text-slate-500">Overdue Payments</p>
             <h4 className="mt-2 text-xl font-semibold text-red-600 sm:text-2xl">
-              ₹{debtSummary.overdueCount}
+              {debtSummary.overdueCount}
             </h4>
           </Link>
         </div>

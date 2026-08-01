@@ -8,10 +8,12 @@ import { householdMembers, households } from "@/db/schema";
 import { setAuthCookies } from "@/lib/auth/cookies";
 import { getAuthenticatedUserId } from "@/lib/auth/getUser";
 import { issueTokensForUser } from "@/lib/auth/service";
+import { logger } from "@/lib/logger";
 
 export async function joinHousehold(inviteCode: string) {
   const userId = await getAuthenticatedUserId();
   const normalizedCode = inviteCode.trim().toUpperCase();
+  logger.info("HouseholdActions", `User ${userId} attempting to join household with code ${normalizedCode}`);
 
   const [existingMembership] = await db
     .select({ id: householdMembers.id })
@@ -20,6 +22,7 @@ export async function joinHousehold(inviteCode: string) {
     .limit(1);
 
   if (existingMembership) {
+    logger.warn("HouseholdActions", `User ${userId} already in a household`);
     throw new Error("You are already in a household.");
   }
 
@@ -30,6 +33,7 @@ export async function joinHousehold(inviteCode: string) {
     .limit(1);
 
   if (!household) {
+    logger.warn("HouseholdActions", `Invalid invite code provided: ${normalizedCode}`);
     throw new Error("Invalid invite code.");
   }
 
@@ -49,5 +53,6 @@ export async function joinHousehold(inviteCode: string) {
     tokens.refreshExpiresAt,
   );
 
+  logger.info("HouseholdActions", `User ${userId} joined household ${household.id} ("${household.name}")`);
   return household;
 }

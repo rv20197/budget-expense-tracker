@@ -14,6 +14,7 @@ import {
   type LoginInput,
   type RegisterInput,
 } from "@/features/auth/schemas/auth.schemas";
+import { logger } from "@/lib/logger";
 
 async function getClientIp(): Promise<string> {
   const headerStore = await headers();
@@ -60,12 +61,14 @@ export async function registerAction(
 export async function loginAction(
   input: LoginInput,
 ): Promise<ActionResult<{ redirectTo: string }, keyof LoginInput>> {
+  logger.info("LoginAction", `Received login request for email: ${input?.email}`);
   try {
     const payload = loginSchema.parse(input);
     const ip = await getClientIp();
     const result = await loginUser(payload, ip);
 
     if (!result.success) {
+      logger.warn("LoginAction", `loginUser failed for ${payload.email}`, { error: result.error });
       return result;
     }
 
@@ -78,13 +81,18 @@ export async function loginAction(
       result.tokens.refreshExpiresAt,
     );
 
+    const redirectTo = result.user.householdId ? "/dashboard" : "/onboarding";
+    logger.info("LoginAction", `Login successful for ${payload.email}. Cookies set. Redirecting to ${redirectTo}`);
+
     return {
       success: true,
-      data: {
-        redirectTo: result.user.householdId ? "/dashboard" : "/onboarding",
-      },
+      data: { redirectTo },
     };
   } catch (error) {
+    logger.error("LoginAction", `Unhandled exception during login for ${input?.email}`, {
+      error: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
     return error instanceof ZodError
       ? validationError<keyof LoginInput>(error)
       : unexpectedError("Unable to sign in.");

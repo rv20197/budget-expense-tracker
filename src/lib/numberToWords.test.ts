@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { formatAmountInWords, numberToWords } from "./numberToWords";
+import { formatAmountInWords, numberToWords, numberToWordsStandard } from "./numberToWords";
 
 describe("numberToWords", () => {
   it("converts single digits correctly", () => {
@@ -21,6 +21,11 @@ describe("numberToWords", () => {
     expect(numberToWords(1500000)).toBe("Fifteen Lakh");
     expect(numberToWords(10000000)).toBe("One Crore");
   });
+
+  it("converts standard millions and billions correctly", () => {
+    expect(numberToWordsStandard(1000000)).toBe("One Million");
+    expect(numberToWordsStandard(1500000)).toBe("One Million Five Hundred Thousand");
+  });
 });
 
 describe("formatAmountInWords", () => {
@@ -32,13 +37,29 @@ describe("formatAmountInWords", () => {
     expect(formatAmountInWords(null)).toBeNull();
   });
 
-  it("formats integer amounts with currency symbol and words", () => {
-    expect(formatAmountInWords("500")).toBe("₹500.00 (Five Hundred Rupees)");
-    expect(formatAmountInWords("1250")).toBe("₹1,250.00 (One Thousand Two Hundred Fifty Rupees)");
+  it("formats integer amounts with INR currency symbol and words", () => {
+    expect(formatAmountInWords("500", "INR")).toBe("₹500.00 (Five Hundred Rupees)");
+    expect(formatAmountInWords("1250", "INR")).toBe("₹1,250.00 (One Thousand Two Hundred Fifty Rupees)");
   });
 
   it("formats decimal amounts with paise", () => {
-    expect(formatAmountInWords("1250.50")).toBe("₹1,250.50 (One Thousand Two Hundred Fifty Rupees and Fifty Paise)");
-    expect(formatAmountInWords("0.75")).toBe("₹0.75 (Seventy Five Paise)");
+    expect(formatAmountInWords("1250.50", "INR")).toBe("₹1,250.50 (One Thousand Two Hundred Fifty Rupees and Fifty Paise)");
+    expect(formatAmountInWords("0.75", "INR")).toBe("₹0.75 (Seventy Five Paise)");
+  });
+
+  it("formats USD currency amounts correctly", () => {
+    expect(formatAmountInWords("1250.50", "USD")).toBe("$1,250.50 (One Thousand Two Hundred Fifty Dollars and Fifty Cents)");
+  });
+
+  it("formats EUR currency amounts correctly", () => {
+    expect(formatAmountInWords("1250.50", "EUR")).toBe("€1,250.50 (One Thousand Two Hundred Fifty Euros and Fifty Cents)");
+  });
+
+  it("formats GBP currency amounts correctly", () => {
+    expect(formatAmountInWords("1250.50", "GBP")).toBe("£1,250.50 (One Thousand Two Hundred Fifty Pounds and Fifty Pence)");
+  });
+
+  it("formats JPY currency amounts correctly", () => {
+    expect(formatAmountInWords("1250", "JPY")).toBe("¥1,250 (One Thousand Two Hundred Fifty Yen)");
   });
 });

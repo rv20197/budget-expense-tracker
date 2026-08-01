@@ -9,6 +9,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { formatCurrency } from "@/lib/utils";
 
 type TrendLineChartProps = Readonly<{
   data: Array<{ label: string; income: number; expense: number }>;
@@ -21,8 +22,8 @@ export function TrendLineChart({ data }: TrendLineChartProps) {
         <LineChart data={data}>
           <CartesianGrid strokeDasharray="3 3" vertical={false} />
           <XAxis dataKey="label" tickLine={false} axisLine={false} />
-          <YAxis tickLine={false} axisLine={false} />
-          <Tooltip />
+          <YAxis tickLine={false} axisLine={false} tickFormatter={(val) => formatCurrency(val)} />
+          <Tooltip formatter={(value: any) => [formatCurrency(Number(value || 0)), "Amount"]} />
           <Line
             type="monotone"
             dataKey="income"

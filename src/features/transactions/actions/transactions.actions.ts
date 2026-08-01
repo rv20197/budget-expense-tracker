@@ -24,6 +24,7 @@ import {
   transactionSchema,
   type TransactionInput,
 } from "@/features/transactions/schemas/finance.schemas";
+import { logger } from "@/lib/logger";
 
 type TransactionFilters = {
   search?: string;
@@ -73,6 +74,7 @@ export async function getTransactions(filters: TransactionFilters = {}) {
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.debug("TransactionActions", "getTransactions rejected: Unauthenticated");
     return {
       items: [],
       page: 1,
@@ -80,6 +82,8 @@ export async function getTransactions(filters: TransactionFilters = {}) {
       total: 0,
     };
   }
+
+  logger.debug("TransactionActions", `Fetching transactions for household: ${auth.householdId}`, filters);
 
   const conditions = [eq(transactions.householdId, auth.householdId)];
 
@@ -165,6 +169,7 @@ export async function getTransactions(filters: TransactionFilters = {}) {
 export async function createTransaction(
   input: TransactionInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof TransactionInput, string>>> {
+  logger.info("TransactionActions", `Creating transaction: ${input.description} (${input.amount})`);
   try {
     const payload = transactionSchema.parse(input);
     const { householdId, userId } = await getAuthContext();
@@ -187,8 +192,12 @@ export async function createTransaction(
 
     revalidateTransactionPaths();
 
+    logger.info("TransactionActions", `Transaction created successfully: ${createdTransaction.id}`);
     return { success: true, data: createdTransaction };
   } catch (error) {
+    logger.error("TransactionActions", `Error creating transaction: ${input.description}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return error instanceof ZodError
       ? validationError<Extract<keyof TransactionInput, string>>(error)
       : unexpectedError(
@@ -201,6 +210,7 @@ export async function updateTransaction(
   transactionId: string,
   input: TransactionInput,
 ): Promise<ActionResult<{ id: string }, Extract<keyof TransactionInput, string>>> {
+  logger.info("TransactionActions", `Updating transaction ${transactionId}: ${input.description}`);
   try {
     const payload = transactionSchema.parse(input);
     const { householdId, userId } = await getAuthContext();
@@ -226,13 +236,18 @@ export async function updateTransaction(
       .returning({ id: transactions.id });
 
     if (!updatedTransaction) {
+      logger.warn("TransactionActions", `Transaction not found for update: ${transactionId}`);
       return { success: false, error: "Transaction not found." };
     }
 
     revalidateTransactionPaths();
 
+    logger.info("TransactionActions", `Transaction updated successfully: ${transactionId}`);
     return { success: true, data: updatedTransaction };
   } catch (error) {
+    logger.error("TransactionActions", `Error updating transaction: ${transactionId}`, {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return error instanceof ZodError
       ? validationError<Extract<keyof TransactionInput, string>>(error)
       : unexpectedError(
@@ -244,9 +259,11 @@ export async function updateTransaction(
 export async function deleteTransaction(
   transactionId: string,
 ): Promise<ActionResult<{ id: string }>> {
+  logger.info("TransactionActions", `Deleting transaction: ${transactionId}`);
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.warn("TransactionActions", "deleteTransaction rejected: Unauthorized");
     return { success: false, error: "Unauthorized." };
   }
 
@@ -261,20 +278,24 @@ export async function deleteTransaction(
     .returning({ id: transactions.id });
 
   if (!deletedTransaction) {
+    logger.warn("TransactionActions", `Transaction not found for deletion: ${transactionId}`);
     return { success: false, error: "Transaction not found." };
   }
 
   revalidateTransactionPaths();
 
+  logger.info("TransactionActions", `Transaction deleted successfully: ${transactionId}`);
   return { success: true, data: deletedTransaction };
 }
 
 export async function bulkDeleteTransactions(
   transactionIds: string[],
 ): Promise<ActionResult<{ count: number }>> {
+  logger.info("TransactionActions", `Bulk deleting ${transactionIds.length} transactions`);
   const auth = await getAuthContext().catch(() => null);
 
   if (!auth) {
+    logger.warn("TransactionActions", "bulkDeleteTransactions rejected: Unauthorized");
     return { success: false, error: "Unauthorized." };
   }
 
@@ -298,5 +319,6 @@ export async function bulkDeleteTransactions(
 
   revalidateTransactionPaths();
 
+  logger.info("TransactionActions", `Bulk deleted ${deletedCount} transactions successfully`);
   return { success: true, data: { count: deletedCount } };
 }

@@ -10,6 +10,7 @@ import { DEFAULT_CATEGORIES } from "@/lib/constants";
 import { getAuthenticatedUserId } from "@/lib/auth/getUser";
 import { issueTokensForUser } from "@/lib/auth/service";
 import { setAuthCookies } from "@/lib/auth/cookies";
+import { logger } from "@/lib/logger";
 
 async function generateInviteCode() {
   for (let attempt = 0; attempt < 5; attempt += 1) {
@@ -30,6 +31,7 @@ async function generateInviteCode() {
 
 export async function createHousehold(name: string) {
   const userId = await getAuthenticatedUserId();
+  logger.info("HouseholdActions", `Creating household "${name}" for user: ${userId}`);
   const inviteCode = await generateInviteCode();
 
   const [existingMembership] = await db
@@ -39,6 +41,7 @@ export async function createHousehold(name: string) {
     .limit(1);
 
   if (existingMembership) {
+    logger.warn("HouseholdActions", `User ${userId} already in a household`);
     throw new Error("You are already in a household.");
   }
 
@@ -79,5 +82,6 @@ export async function createHousehold(name: string) {
     tokens.refreshExpiresAt,
   );
 
+  logger.info("HouseholdActions", `Household "${name}" created with ID ${household.id} and invite code ${inviteCode}`);
   return household;
 }

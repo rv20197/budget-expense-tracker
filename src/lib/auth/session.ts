@@ -12,6 +12,7 @@ export type Session = {
     email: string;
     name: string;
     householdId: string | null;
+    currency: string;
   };
 };
 
@@ -41,12 +42,15 @@ export async function getSession(): Promise<Session | null> {
       return null;
     }
 
+    const currencyPref = cookieStore.get("currency_pref")?.value;
+
     return {
       user: {
         id: payload.sub,
         email: payload.email,
         householdId: payload.householdId ?? null,
         name: payload.name,
+        currency: currencyPref || "INR",
       },
     };
   } catch {

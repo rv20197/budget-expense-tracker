@@ -12,6 +12,7 @@ import { loginSchema, type LoginInput } from "@/features/auth/schemas/auth.schem
 import { AuthFormShell } from "@/features/auth/components/auth-form-shell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { logger } from "@/lib/logger";
 
 export function LoginForm() {
   const router = useRouter();
@@ -31,11 +32,14 @@ export function LoginForm() {
   });
 
   const onSubmit = handleSubmit((values) => {
+    logger.info("LoginFormUI", `Form submitted for email: ${values.email}`);
     startTransition(async () => {
       const result = await loginAction({
         email: values.email,
         password: values.password,
       });
+
+      logger.info("LoginFormUI", `Received loginAction result for ${values.email}`, result);
 
       if (!result.success) {
         toast.error(result.error);
@@ -43,8 +47,9 @@ export function LoginForm() {
       }
 
       toast.success("Welcome back.");
-      router.push(redirectTo || result.data.redirectTo);
-      router.refresh();
+      const targetUrl = searchParams.get("redirectTo") || result.data.redirectTo || "/dashboard";
+      logger.info("LoginFormUI", `Redirecting client to ${targetUrl}`);
+      window.location.href = targetUrl;
     });
   });
 

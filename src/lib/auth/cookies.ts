@@ -14,9 +14,12 @@ type CookieSetter = {
   ) => unknown;
 };
 
+const isProduction = env.NODE_ENV === "production";
+const isHttps = process.env.VERCEL === "1" || process.env.COOKIE_SECURE === "true";
+
 const sharedOptions = {
   httpOnly: true,
-  secure: env.NODE_ENV === "production",
+  secure: isProduction && isHttps,
   sameSite: "lax" as const,
   path: "/",
 };

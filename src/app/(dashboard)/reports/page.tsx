@@ -3,7 +3,7 @@ import { redirect } from "next/navigation";
 import { TrendLineChart } from "@/features/dashboard/components/trend-line-chart";
 import { getCategoryBreakdown, getMonthlySummary, getTrend } from "@/features/dashboard/actions/reports.actions";
 import { getSession } from "@/lib/auth/session";
-import { getCurrentMonthYear, startOfMonth, endOfMonth } from "@/lib/utils";
+import { getCurrentMonthYear, startOfMonth, endOfMonth, formatCurrency } from "@/lib/utils";
 
 export default async function ReportsPage() {
   const session = await getSession();
@@ -16,6 +16,7 @@ export default async function ReportsPage() {
     redirect("/onboarding");
   }
 
+  const currency = session.user.currency;
   const current = getCurrentMonthYear();
   const dashboardContext = {
     householdId: session.user.householdId,
@@ -51,11 +52,15 @@ export default async function ReportsPage() {
                 </tr>
                 <tr>
                   <td className="py-3 px-4 sm:px-5 font-medium text-slate-600">Income</td>
-                  <td className="py-3 px-4 sm:px-5 text-right text-emerald-600">{summary.income}</td>
+                  <td className="py-3 px-4 sm:px-5 text-right font-semibold text-emerald-600">
+                    {formatCurrency(summary.income, currency)}
+                  </td>
                 </tr>
                 <tr>
                   <td className="py-3 px-4 sm:px-5 font-medium text-slate-600">Expense</td>
-                  <td className="py-3 px-4 sm:px-5 text-right text-slate-950">{summary.expense}</td>
+                  <td className="py-3 px-4 sm:px-5 text-right font-semibold text-slate-950">
+                    {formatCurrency(summary.expense, currency)}
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -70,7 +75,9 @@ export default async function ReportsPage() {
                   <span className="inline-block h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: item.categoryColor }} />
                   <span className="font-medium text-slate-950 truncate">{item.categoryName}</span>
                 </div>
-                <span className="text-sm text-slate-700 shrink-0 ml-2">{item.total.toFixed(2)}</span>
+                <span className="text-sm font-semibold text-slate-700 shrink-0 ml-2">
+                  {formatCurrency(item.total, currency)}
+                </span>
               </div>
             ))}
           </div>

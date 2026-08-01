@@ -29,6 +29,12 @@ export const debtStatusEnum = pgEnum("debt_status", [
 ]);
 export const recordScopeEnum = pgEnum("record_scope", ["household", "personal"]);
 export const householdRoleEnum = pgEnum("household_role", ["admin", "member"]);
+export const recurringFrequencyEnum = pgEnum("recurring_frequency", [
+  "daily",
+  "weekly",
+  "monthly",
+  "yearly",
+]);
 
 const timestamps = {
   createdAt: timestamp("created_at", { withTimezone: true })
@@ -47,6 +53,7 @@ export const users = pgTable(
     name: text("name").notNull(),
     email: text("email").notNull(),
     passwordHash: text("password_hash").notNull(),
+    currency: varchar("currency", { length: 10 }).default("INR").notNull(),
     ...timestamps,
   },
   (table) => [uniqueIndex("users_email_unique").on(table.email)],
@@ -154,6 +161,7 @@ export const statementUploads = pgTable(
     duplicatesSkipped: integer("duplicates_skipped").notNull().default(0),
     totalInserted: integer("total_inserted").notNull().default(0),
     errorMessage: text("error_message"),
+    formatId: varchar("format_id", { length: 50 }),
     ...timestamps,
   },
   (table) => [
@@ -187,6 +195,9 @@ export const transactions = pgTable(
     rawDescription: text("raw_description"),
     merchantName: varchar("merchant_name", { length: 255 }),
     confidenceScore: doublePrecision("confidence_score"),
+    sourceAccount: varchar("source_account", { length: 100 }),
+    isInternalTransfer: boolean("is_internal_transfer").default(false),
+    transferGroupId: uuid("transfer_group_id"),
     ...timestamps,
   },
   (table) => [
@@ -195,6 +206,69 @@ export const transactions = pgTable(
     index("transactions_category_id_idx").on(table.categoryId),
     index("transactions_transaction_date_idx").on(table.transactionDate),
     index("transactions_upload_id_idx").on(table.uploadId),
+    index("transactions_source_account_idx").on(table.sourceAccount),
+    index("transactions_is_internal_transfer_idx").on(table.isInternalTransfer),
+    index("transactions_transfer_group_id_idx").on(table.transferGroupId),
+  ],
+);
+
+export const budgets = pgTable(
+  "budgets",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id")
+      .notNull()
+      .references(() => households.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    month: integer("month").notNull(),
+    year: integer("year").notNull(),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    scope: recordScopeEnum("scope").default("household").notNull(),
+    ...timestamps,
+  },
+  (table) => [
+    uniqueIndex("budgets_user_category_month_year_unique").on(
+      table.createdBy,
+      table.categoryId,
+      table.month,
+      table.year,
+    ),
+    index("budgets_user_id_idx").on(table.createdBy),
+  ],
+);
+
+export const recurringTransactions = pgTable(
+  "recurring_transactions",
+  {
+    id: uuid("id").defaultRandom().primaryKey(),
+    householdId: uuid("household_id")
+      .references(() => households.id, { onDelete: "cascade" }),
+    createdBy: uuid("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    categoryId: uuid("category_id")
+      .notNull()
+      .references(() => categories.id, { onDelete: "cascade" }),
+    type: categoryTypeEnum("type").notNull(),
+    description: text("description").notNull(),
+    amount: numeric("amount", { precision: 12, scale: 2 }).notNull(),
+    frequency: recurringFrequencyEnum("frequency").notNull(),
+    startDate: date("start_date", { mode: "date" }).notNull(),
+    nextDueDate: date("next_due_date", { mode: "date" }).notNull(),
+    isActive: boolean("is_active").default(true).notNull(),
+    scope: recordScopeEnum("scope").default("household").notNull(),
+    notes: text("notes"),
+    ...timestamps,
+  },
+  (table) => [
+    index("recurring_transactions_user_id_idx").on(table.createdBy),
+    index("recurring_transactions_next_due_date_idx").on(table.nextDueDate),
+    index("recurring_transactions_active_idx").on(table.isActive),
   ],
 );
 

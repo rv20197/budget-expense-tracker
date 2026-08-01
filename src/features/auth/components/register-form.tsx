@@ -45,8 +45,7 @@ export function RegisterForm() {
       }
 
       toast.success("Account created.");
-      router.push(result.data.redirectTo);
-      router.refresh();
+      window.location.href = result.data.redirectTo || "/dashboard";
     });
   });
 
