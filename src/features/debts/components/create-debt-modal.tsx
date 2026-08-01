@@ -98,6 +98,7 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
           <Input
             label="Principal"
             placeholder="0.00"
+            showAmountInWords
             error={errors.principal?.message}
             {...register("principal")}
           />
@@ -143,6 +144,7 @@ export function CreateDebtModal({ open, onClose }: CreateDebtModalProps) {
         <Input
           label="Installment amount"
           placeholder="0.00"
+          showAmountInWords
           error={errors.installmentAmount?.message}
           {...register("installmentAmount")}
         />

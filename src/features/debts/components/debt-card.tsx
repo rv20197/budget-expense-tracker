@@ -47,9 +47,9 @@ export function DebtCard({ debt, projection, onEdit }: DebtCardProps) {
   const dueSoonThreshold = new Date(today);
   dueSoonThreshold.setDate(dueSoonThreshold.getDate() + 7);
   const dueDate = debt.dueDate;
-  const isOverdue = dueDate ? dueDate < today && debt.status === "ACTIVE" : false;
+  const isOverdue = dueDate ? dueDate <= today && debt.status === "ACTIVE" : false;
   const isDueSoon = dueDate
-    ? dueDate >= today &&
+    ? dueDate > today &&
       debt.status === "ACTIVE" &&
       new Date(dueDate) <= dueSoonThreshold
     : false;

@@ -12,6 +12,7 @@ import { getAuthContext } from "@/lib/auth/getUser";
 import type { ActionResult } from "@/lib/types/actions";
 import { addMonthsClamped, getDateString, toMoneyString } from "@/lib/utils";
 import { calculatePayoffMonths } from "@/features/debts/lib/projection";
+import { calculateNextPaymentDates } from "@/features/debts/lib/dates";
 import {
   createDebtSchema,
   recordPaymentSchema,
@@ -260,10 +261,15 @@ export async function recordPayment(
       remainingBalance.minus(paymentAmount),
       0,
     );
-    const nextStatus = nextRemainingBalance.lte(0) ? "PAID" : debt.status;
-    const nextPaymentDate = debt.nextPaymentDate
-      ? addMonthsClamped(debt.nextPaymentDate, 1)
-      : null;
+    const isFullyPaid = nextRemainingBalance.lte(0);
+    const nextStatus = isFullyPaid ? "PAID" : debt.status;
+    const { dueDate: nextDueDate, nextPaymentDate } = calculateNextPaymentDates(
+      {
+        dueDate: debt.dueDate,
+        nextPaymentDate: debt.nextPaymentDate,
+      },
+      isFullyPaid,
+    );
 
     const createdPaymentId = await db.transaction(async (tx) => {
       const [payment] = await tx
@@ -280,6 +286,7 @@ export async function recordPayment(
       await tx
         .update(debts)
         .set({
+          dueDate: nextDueDate,
           nextPaymentDate,
           remainingBalance: toMoneyString(nextRemainingBalance),
           status: nextStatus,

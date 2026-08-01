@@ -198,6 +198,7 @@ export function TransactionForm({
             <Input
               label="Amount"
               placeholder="0.00"
+              showAmountInWords
               error={errors.amount?.message}
               {...register("amount")}
             />

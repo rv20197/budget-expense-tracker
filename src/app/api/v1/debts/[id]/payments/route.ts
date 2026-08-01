@@ -14,6 +14,7 @@ import {
 import { getSessionFromRequest } from "@/lib/auth/getSessionFromRequest";
 import { addMonthsClamped, toMoneyString } from "@/lib/utils";
 import { recordPaymentSchema } from "@/features/debts/schemas/debt.schemas";
+import { calculateNextPaymentDates } from "@/features/debts/lib/dates";
 
 export async function POST(
   request: Request,
@@ -57,10 +58,15 @@ export async function POST(
       remainingBalance.minus(paymentAmount),
       0,
     );
-    const nextStatus = nextRemainingBalance.lte(0) ? "PAID" : debt.status;
-    const nextPaymentDate = debt.nextPaymentDate
-      ? addMonthsClamped(debt.nextPaymentDate, 1)
-      : null;
+    const isFullyPaid = nextRemainingBalance.lte(0);
+    const nextStatus = isFullyPaid ? "PAID" : debt.status;
+    const { dueDate: nextDueDate, nextPaymentDate } = calculateNextPaymentDates(
+      {
+        dueDate: debt.dueDate,
+        nextPaymentDate: debt.nextPaymentDate,
+      },
+      isFullyPaid,
+    );
 
     const createdPaymentId = await db.transaction(async (tx) => {
       const [payment] = await tx
@@ -77,6 +83,7 @@ export async function POST(
       await tx
         .update(debts)
         .set({
+          dueDate: nextDueDate,
           nextPaymentDate,
           remainingBalance: toMoneyString(nextRemainingBalance),
           status: nextStatus,

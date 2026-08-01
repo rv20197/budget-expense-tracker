@@ -124,6 +124,7 @@ export function EditDebtModal({ open, debt, onClose }: EditDebtModalProps) {
           </div>
           <Input
             label="Installment amount"
+            showAmountInWords
             error={errors.installmentAmount?.message}
             {...register("installmentAmount")}
           />

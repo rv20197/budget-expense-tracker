@@ -65,17 +65,19 @@ export function getDateString(date: Date) {
 }
 
 export function addMonthsClamped(date: Date, monthsToAdd: number) {
-  const year = date.getFullYear();
-  const month = date.getMonth();
-  const day = date.getDate();
+  const year = date.getUTCFullYear();
+  const month = date.getUTCMonth();
+  const day = date.getUTCDate();
 
-  const targetMonthDate = new Date(year, month + monthsToAdd + 1, 0);
-  const lastDayOfTargetMonth = targetMonthDate.getDate();
+  const targetMonthDate = new Date(Date.UTC(year, month + monthsToAdd + 1, 0));
+  const lastDayOfTargetMonth = targetMonthDate.getUTCDate();
 
   return new Date(
-    targetMonthDate.getFullYear(),
-    targetMonthDate.getMonth(),
-    Math.min(day, lastDayOfTargetMonth),
+    Date.UTC(
+      targetMonthDate.getUTCFullYear(),
+      targetMonthDate.getUTCMonth(),
+      Math.min(day, lastDayOfTargetMonth),
+    ),
   );
 }
 
