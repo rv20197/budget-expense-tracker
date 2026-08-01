@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { deletePayment } from "@/features/debts/actions/debt.actions";
+import { useCurrency } from "@/lib/currencyContext";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -22,6 +23,7 @@ export function PaymentHistoryTable({
   payments,
   amountPaid,
 }: PaymentHistoryTableProps) {
+  const { currency } = useCurrency();
   const [selectedPaymentId, setSelectedPaymentId] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
@@ -50,7 +52,7 @@ export function PaymentHistoryTable({
               <tr key={payment.id}>
                 <td className="px-4 py-3">{payment.paidOn}</td>
                 <td className="px-4 py-3 font-medium text-slate-950">
-                  {formatCurrency(payment.amount)}
+                  {formatCurrency(payment.amount, currency)}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {payment.note || "—"}
@@ -67,7 +69,7 @@ export function PaymentHistoryTable({
             ))}
             <tr className="bg-slate-50 font-semibold text-slate-950">
               <td className="px-4 py-3">Total paid</td>
-              <td className="px-4 py-3">{formatCurrency(amountPaid)}</td>
+              <td className="px-4 py-3">{formatCurrency(amountPaid, currency)}</td>
               <td className="px-4 py-3" colSpan={2} />
             </tr>
           </tbody>

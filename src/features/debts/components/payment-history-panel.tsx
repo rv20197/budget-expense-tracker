@@ -8,6 +8,7 @@ import {
   getPaymentHistory,
   type PaymentHistoryPage,
 } from "@/features/debts/actions/debt.actions";
+import { useCurrency } from "@/lib/currencyContext";
 import { formatCurrency } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Modal } from "@/components/ui/modal";
@@ -21,6 +22,7 @@ export function PaymentHistoryPanel({
   debtId,
   amountPaid,
 }: PaymentHistoryPanelProps) {
+  const { currency } = useCurrency();
   const [page, setPage] = useState<PaymentHistoryPage | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,7 +77,7 @@ export function PaymentHistoryPanel({
               <tr key={payment.id}>
                 <td className="px-4 py-3">{payment.paidOn}</td>
                 <td className="px-4 py-3 font-medium text-slate-950">
-                  {formatCurrency(payment.amount)}
+                  {formatCurrency(payment.amount, currency)}
                 </td>
                 <td className="px-4 py-3 text-slate-600">
                   {payment.note || "—"}
@@ -92,7 +94,7 @@ export function PaymentHistoryPanel({
             ))}
             <tr className="bg-slate-50 font-semibold text-slate-950">
               <td className="px-4 py-3">Total paid</td>
-              <td className="px-4 py-3">{formatCurrency(amountPaid)}</td>
+              <td className="px-4 py-3">{formatCurrency(amountPaid, currency)}</td>
               <td className="px-4 py-3" colSpan={2} />
             </tr>
           </tbody>

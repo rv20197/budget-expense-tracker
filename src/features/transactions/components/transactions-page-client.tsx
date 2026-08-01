@@ -103,10 +103,10 @@ export function TransactionsPageClient({
             {Math.min(page * pageSize, total)} of {total} transactions.
           </p>
         </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:flex-wrap">
           <button
             onClick={() => handleGroupBy(groupBy === "description" ? null : "description")}
-            className={`inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition min-h-[44px] ${
+            className={`w-full sm:w-auto inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition min-h-[44px] ${
               groupBy === "description"
                 ? "bg-slate-950 text-white hover:bg-slate-800"
                 : "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50"
@@ -116,7 +116,7 @@ export function TransactionsPageClient({
           </button>
           <a
             href={exportHref}
-            className="inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2.5 text-sm font-medium text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-50 min-h-[44px]"
+            className="w-full sm:w-auto inline-flex items-center justify-center rounded-2xl bg-white px-4 py-2.5 text-sm font-medium text-slate-900 ring-1 ring-slate-200 transition hover:bg-slate-50 min-h-[44px]"
           >
             Export CSV
           </a>

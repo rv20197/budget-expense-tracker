@@ -16,6 +16,7 @@ import type {
   StatementTransactionItem,
   StatementUploadItem,
 } from "@/features/statements/actions/statements.actions";
+import { useCurrency } from "@/lib/currencyContext";
 import { formatCurrency } from "@/lib/utils";
 
 type Category = { id: string; name: string; type: string };
@@ -98,6 +99,7 @@ export function StatementTransactionsView({
   totalPages,
   categories,
 }: Props) {
+  const { currency } = useCurrency();
   const router = useRouter();
   const searchParams = useSearchParams();
 
@@ -135,11 +137,11 @@ export function StatementTransactionsView({
       </div>
 
       {/* Filter bar */}
-      <div className="mb-4 flex flex-wrap gap-3 rounded-[20px] border border-slate-200 bg-slate-50 p-4">
+      <div className="mb-4 flex flex-col gap-3 rounded-[20px] border border-slate-200 bg-slate-50 p-4 sm:flex-row sm:flex-wrap sm:items-center">
         <select
           value={categoryFilter}
           onChange={(e) => updateParam("categoryId", e.target.value)}
-          className="rounded-2xl border border-slate-200 px-3 py-2 text-sm outline-none"
+          className="w-full sm:w-auto flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none min-h-[44px]"
         >
           <option value="">All categories</option>
           {categories.map((c) => (
@@ -152,7 +154,7 @@ export function StatementTransactionsView({
         <select
           value={typeFilter}
           onChange={(e) => updateParam("type", e.target.value)}
-          className="rounded-2xl border border-slate-200 px-3 py-2 text-sm outline-none"
+          className="w-full sm:w-auto flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none min-h-[44px]"
         >
           <option value="">All types</option>
           <option value="income">Income</option>
@@ -163,24 +165,25 @@ export function StatementTransactionsView({
           type="date"
           value={dateFrom}
           onChange={(e) => updateParam("dateFrom", e.target.value)}
-          className="rounded-2xl border border-slate-200 px-3 py-2 text-sm outline-none"
+          className="w-full sm:w-auto flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none min-h-[44px]"
           placeholder="From"
         />
         <input
           type="date"
           value={dateTo}
           onChange={(e) => updateParam("dateTo", e.target.value)}
-          className="rounded-2xl border border-slate-200 px-3 py-2 text-sm outline-none"
+          className="w-full sm:w-auto flex-1 rounded-2xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none min-h-[44px]"
           placeholder="To"
         />
 
-        <label className="flex items-center gap-2 text-sm text-slate-700">
+        <label className="flex items-center gap-2 text-sm text-slate-700 min-h-[44px] cursor-pointer">
           <input
             type="checkbox"
             checked={lowConfidence}
             onChange={(e) =>
               updateParam("lowConfidence", e.target.checked ? "true" : "")
             }
+            className="h-4 w-4 rounded border-slate-300"
           />
           Low confidence only
         </label>
@@ -224,7 +227,7 @@ export function StatementTransactionsView({
                     }`}
                   >
                     {t.type === "income" ? "+" : "-"}
-                    {formatCurrency(t.amount)}
+                    {formatCurrency(t.amount, currency)}
                   </span>
                 </div>
               </div>
@@ -286,7 +289,7 @@ export function StatementTransactionsView({
                         }`}
                       >
                         {t.type === "income" ? "+" : "-"}
-                        {formatCurrency(t.amount)}
+                        {formatCurrency(t.amount, currency)}
                       </span>
                     </TableCell>
                     <TableCell>

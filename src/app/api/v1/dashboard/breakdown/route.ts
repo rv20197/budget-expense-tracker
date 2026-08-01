@@ -5,6 +5,8 @@ import { categories, transactions } from "@/db/schema";
 import { badRequest, ok, unauthorized } from "@/lib/api-response";
 import { getSessionFromRequest } from "@/lib/auth/getSessionFromRequest";
 
+import { startOfMonth } from "@/lib/utils";
+
 export async function GET(request: Request) {
   const session = await getSessionFromRequest(request);
   if (!session) return unauthorized();
@@ -14,7 +16,7 @@ export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
 
   const now = new Date();
-  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+  const firstOfMonth = startOfMonth(now.getMonth() + 1, now.getFullYear())
     .toISOString()
     .slice(0, 10);
   const from = searchParams.get("from") ?? firstOfMonth;

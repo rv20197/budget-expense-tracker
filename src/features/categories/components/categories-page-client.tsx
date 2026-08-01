@@ -123,15 +123,15 @@ export function CategoriesPageClient({
         </Button>
       </div>
 
-      <div className="inline-flex rounded-2xl bg-slate-100 p-1">
+      <div className="flex sm:inline-flex rounded-2xl bg-slate-100 p-1 w-full sm:w-auto">
         {(["expense", "income"] as const).map((value) => (
           <button
             key={value}
             type="button"
-            className={`flex-1 sm:flex-none rounded-2xl px-4 py-2 text-sm font-medium transition ${
+            className={`flex-1 rounded-2xl px-4 py-2.5 text-sm font-medium transition min-h-[44px] ${
               tab === value
                 ? "bg-white text-slate-950 shadow"
-                : "text-slate-600"
+                : "text-slate-600 hover:text-slate-900"
             }`}
             onClick={() => {
               setTab(value);

@@ -10,6 +10,7 @@ import {
 import { toast } from "sonner";
 
 import { deleteTransaction } from "@/features/transactions/actions/transactions.actions";
+import { useCurrency } from "@/lib/currencyContext";
 import { formatCurrency } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,30 +24,41 @@ type SortableHeaderProps = {
   children: React.ReactNode;
 };
 
-function SortableHeader({ column, sortBy, sortOrder, onSort, children }: SortableHeaderProps) {
-  const isActive = sortBy === column;
-  const Icon = isActive && sortOrder === "asc" ? ArrowUpwardIcon : ArrowDownwardIcon;
-
+function SortableHeader({
+  column,
+  sortBy,
+  sortOrder,
+  onSort,
+  children,
+}: SortableHeaderProps) {
+  const isSorted = sortBy === column;
   return (
     <th className="px-4 py-3">
       <button
+        type="button"
+        className="flex items-center gap-1 font-semibold text-slate-700 text-xs uppercase tracking-wider hover:text-slate-900"
         onClick={() => onSort(column)}
-        className="flex items-center gap-1 hover:text-slate-950 transition-colors"
       >
         {children}
-        {isActive && <Icon className="h-4 w-4" />}
+        {isSorted ? (
+          sortOrder === "asc" ? (
+            <ArrowUpwardIcon className="h-3.5 w-3.5" />
+          ) : (
+            <ArrowDownwardIcon className="h-3.5 w-3.5" />
+          )
+        ) : null}
       </button>
     </th>
   );
 }
 
-type TransactionItem = {
+export type TransactionItem = {
   addedByName: string;
-  id: string;
-  description: string;
   amount: string;
-  type: "income" | "expense";
+  description: string;
+  id: string;
   transactionDate: string;
+  type: "income" | "expense";
   notes: string | null;
   categoryId: string;
   categoryName: string;
@@ -100,6 +112,7 @@ export function TransactionTable({
   onSort,
   groupBy,
 }: TransactionTableProps) {
+  const { currency } = useCurrency();
   const [transactionToDelete, setTransactionToDelete] =
     useState<TransactionItem | null>(null);
   const [isPending, startTransition] = useTransition();
@@ -128,7 +141,7 @@ export function TransactionTable({
                   <p className="text-xs text-slate-500 mt-0.5">{group.count} transaction{group.count !== 1 ? "s" : ""}</p>
                 </div>
                 <span className="font-semibold text-slate-900 text-sm">
-                  {formatCurrency(group.totalAmount.toFixed(2))}
+                  {formatCurrency(group.totalAmount.toFixed(2), currency)}
                 </span>
               </div>
               <div className="divide-y divide-slate-100">
@@ -158,7 +171,7 @@ export function TransactionTable({
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={item.type === "income" ? "font-semibold text-emerald-600 text-sm" : "font-semibold text-slate-900 text-sm"}>
-                          {item.type === "income" ? "+" : "-"}{formatCurrency(item.amount)}
+                          {item.type === "income" ? "+" : "-"}{formatCurrency(item.amount, currency)}
                         </span>
                         <Button variant="ghost" onClick={() => onEdit(item)}>
                           <EditIcon className="h-4 w-4" />
@@ -206,7 +219,7 @@ export function TransactionTable({
                           </span>
                         </div>
                         <span className="font-semibold text-slate-700">
-                          {formatCurrency(group.totalAmount.toFixed(2))} total
+                          {formatCurrency(group.totalAmount.toFixed(2), currency)} total
                         </span>
                       </div>
                     </td>
@@ -237,7 +250,7 @@ export function TransactionTable({
                         <td className="px-4 py-3 align-top text-slate-600">{item.transactionDate}</td>
                         <td className="px-4 py-3 align-top">
                           <span className={item.type === "income" ? "font-semibold text-emerald-600" : "font-semibold text-slate-900"}>
-                            {item.type === "income" ? "+" : "-"}{formatCurrency(item.amount)}
+                            {item.type === "income" ? "+" : "-"}{formatCurrency(item.amount, currency)}
                           </span>
                         </td>
                         <td className="px-4 py-3 align-top">
@@ -297,8 +310,8 @@ export function TransactionTable({
 
           return (
             <div key={item.id} className="rounded-[20px] border border-slate-200 bg-white p-4">
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
+              <div className="flex items-start justify-between gap-3">
+                <div className="flex items-start gap-3 min-w-0 flex-1">
                   <input
                     type="checkbox"
                     checked={isSelected}
@@ -309,41 +322,41 @@ export function TransactionTable({
                           : selectedIds.filter((id) => id !== item.id),
                       )
                     }
-                    className="mt-1"
+                    className="mt-1 shrink-0"
                   />
-                  <div className="flex-1">
-                    <p className="font-medium text-slate-900">{item.description}</p>
+                  <div className="min-w-0 flex-1">
+                    <p className="font-medium text-slate-900 break-words">{item.description}</p>
                     {item.notes && (
-                      <p className="mt-1 text-xs text-slate-500">{item.notes}</p>
+                      <p className="mt-1 text-xs text-slate-500 break-words">{item.notes}</p>
                     )}
-                    <div className="mt-2 flex items-center gap-2">
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
                       <Badge
                         className="border border-white/40"
                         variant={item.type === "income" ? "success" : "neutral"}
                       >
                         <span
-                          className="mr-2 inline-block h-2 w-2 rounded-full"
+                          className="mr-2 inline-block h-2 w-2 rounded-full shrink-0"
                           style={{ backgroundColor: item.categoryColor }}
                         />
                         {item.categoryName}
                       </Badge>
-                      <span className="text-xs text-slate-500">{item.transactionDate}</span>
+                      <span className="text-xs text-slate-500 shrink-0">{item.transactionDate}</span>
                     </div>
-                    <p className="mt-2 text-xs text-slate-500">
+                    <p className="mt-2 text-xs text-slate-500 truncate">
                       Added by {item.addedByName}
                     </p>
                   </div>
                 </div>
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex flex-col items-end gap-2 shrink-0">
                   <span
                     className={
                       item.type === "income"
-                        ? "font-semibold text-emerald-600"
-                        : "font-semibold text-slate-900"
+                        ? "font-semibold text-emerald-600 text-sm sm:text-base"
+                        : "font-semibold text-slate-900 text-sm sm:text-base"
                     }
                   >
                     {item.type === "income" ? "+" : "-"}
-                    {formatCurrency(item.amount)}
+                    {formatCurrency(item.amount, currency)}
                   </span>
                   <div className="flex gap-1">
                     <Button variant="ghost" onClick={() => onEdit(item)}>
@@ -448,7 +461,7 @@ export function TransactionTable({
                       }
                     >
                       {item.type === "income" ? "+" : "-"}
-                      {formatCurrency(item.amount)}
+                      {formatCurrency(item.amount, currency)}
                     </span>
                   </td>
                   <td className="px-4 py-4 align-top">

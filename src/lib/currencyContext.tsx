@@ -46,14 +46,24 @@ export function CurrencyProvider({
   initialCurrency?: string;
   children: React.ReactNode;
 }) {
+  if (initialCurrency && SUPPORTED_CURRENCIES[initialCurrency]) {
+    globalClientCurrency = initialCurrency;
+  }
+
   const [currency, setCurrencyState] = useState<string>(() => {
-    return initialCurrency && SUPPORTED_CURRENCIES[initialCurrency]
-      ? initialCurrency
-      : getClientCurrency();
+    if (initialCurrency && SUPPORTED_CURRENCIES[initialCurrency]) {
+      return initialCurrency;
+    }
+    return getClientCurrency();
   });
 
   useEffect(() => {
-    globalClientCurrency = currency;
+    if (currency && SUPPORTED_CURRENCIES[currency]) {
+      globalClientCurrency = currency;
+      if (typeof document !== "undefined") {
+        document.cookie = `${CURRENCY_COOKIE_NAME}=${currency}; path=/; max-age=31536000; SameSite=Lax`;
+      }
+    }
   }, [currency]);
 
   const setCurrency = (code: string) => {

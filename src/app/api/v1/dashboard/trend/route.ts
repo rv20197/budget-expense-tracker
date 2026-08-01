@@ -58,9 +58,9 @@ export async function GET(request: Request) {
 
   const results = [];
   for (let offset = months - 1; offset >= 0; offset -= 1) {
-    const date = new Date(now.getFullYear(), now.getMonth() - offset, 1);
-    const month = date.getMonth() + 1;
-    const year = date.getFullYear();
+    const date = new Date(Date.UTC(now.getFullYear(), now.getMonth() - offset, 1));
+    const month = date.getUTCMonth() + 1;
+    const year = date.getUTCFullYear();
     const key = `${year}-${String(month).padStart(2, "0")}`;
     const entry = byMonth.get(key) ?? { income: 0, expense: 0 };
     results.push({ ...entry, label: formatMonthYear(month, year) });

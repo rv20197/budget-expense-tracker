@@ -13,16 +13,30 @@ export function toMoneyString(value: Decimal.Value) {
 export function formatCurrency(value: Decimal.Value, currency?: string) {
   const code = currency || getClientCurrency();
   const config = SUPPORTED_CURRENCIES[code] || SUPPORTED_CURRENCIES.INR;
+  const numericValue = toDecimal(value).toNumber();
+  const fractionDigits = config.code === "JPY" ? 0 : 2;
 
   try {
-    return new Intl.NumberFormat("en-US", {
-      style: "currency",
-      currency: config.code,
-      maximumFractionDigits: config.code === "JPY" ? 0 : 2,
-    }).format(toDecimal(value).toNumber());
+    const formattedNumber = new Intl.NumberFormat(
+      config.system === "indian" ? "en-IN" : "en-US",
+      {
+        minimumFractionDigits: fractionDigits,
+        maximumFractionDigits: fractionDigits,
+      },
+    ).format(numericValue);
+
+    const space = config.symbol.length > 1 ? " " : "";
+    return `${config.symbol}${space}${formattedNumber}`;
   } catch {
-    return `${config.symbol}${toDecimal(value).toFixed(2)}`;
+    const space = config.symbol.length > 1 ? " " : "";
+    return `${config.symbol}${space}${toDecimal(value).toFixed(fractionDigits)}`;
   }
+}
+
+export function formatCurrencyDetailed(value: Decimal.Value, currency?: string) {
+  const code = currency || getClientCurrency();
+  const config = SUPPORTED_CURRENCIES[code] || SUPPORTED_CURRENCIES.INR;
+  return `${config.code} - ${formatCurrency(value, currency)}`;
 }
 
 export function formatDate(value: Date | string) {
@@ -38,7 +52,8 @@ export function formatMonthYear(month: number, year: number) {
   return new Intl.DateTimeFormat("en-US", {
     month: "long",
     year: "numeric",
-  }).format(new Date(year, month - 1, 1));
+    timeZone: "UTC",
+  }).format(new Date(Date.UTC(year, month - 1, 1)));
 }
 
 export function getMonthOptions() {
@@ -63,11 +78,11 @@ export function generateRandomHexColor() {
 }
 
 export function startOfMonth(month: number, year: number) {
-  return new Date(year, month - 1, 1);
+  return new Date(Date.UTC(year, month - 1, 1));
 }
 
 export function endOfMonth(month: number, year: number) {
-  return new Date(year, month, 0);
+  return new Date(Date.UTC(year, month, 0));
 }
 
 export function getDateString(date: Date) {

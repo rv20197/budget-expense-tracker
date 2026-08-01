@@ -48,23 +48,45 @@ export function Pagination({ currentPage, totalPages, onPageChange }: Pagination
   const visiblePages = getVisiblePages();
 
   return (
-    <div className="flex items-center justify-center gap-2">
-      <Button onClick={() => onPageChange(currentPage - 1)} disabled={currentPage <= 1} variant="outlined" startIcon={<ChevronLeftIcon />}>
+    <div className="flex flex-wrap items-center justify-center gap-2">
+      <Button
+        onClick={() => onPageChange(currentPage - 1)}
+        disabled={currentPage <= 1}
+        variant="outlined"
+        startIcon={<ChevronLeftIcon />}
+        size="small"
+      >
         Previous
       </Button>
 
-      {visiblePages.map((page, index) => (
-        <Button
-          key={index}
-          variant={page === currentPage ? "contained" : "outlined"}
-          onClick={() => typeof page === "number" && onPageChange(page)}
-          disabled={page === "..."}
-        >
-          {page}
-        </Button>
-      ))}
+      {/* Desktop view: Page buttons */}
+      <div className="hidden sm:flex items-center gap-1.5">
+        {visiblePages.map((page, index) => (
+          <Button
+            key={index}
+            variant={page === currentPage ? "contained" : "outlined"}
+            onClick={() => typeof page === "number" && onPageChange(page)}
+            disabled={page === "..."}
+            size="small"
+            sx={{ minWidth: "36px", px: 1 }}
+          >
+            {page}
+          </Button>
+        ))}
+      </div>
 
-      <Button onClick={() => onPageChange(currentPage + 1)} disabled={currentPage >= totalPages} variant="outlined" endIcon={<ChevronRightIcon />}>
+      {/* Mobile view: Simple text indicator */}
+      <span className="text-xs font-medium text-slate-600 sm:hidden px-2">
+        Page {currentPage} of {totalPages}
+      </span>
+
+      <Button
+        onClick={() => onPageChange(currentPage + 1)}
+        disabled={currentPage >= totalPages}
+        variant="outlined"
+        endIcon={<ChevronRightIcon />}
+        size="small"
+      >
         Next
       </Button>
     </div>

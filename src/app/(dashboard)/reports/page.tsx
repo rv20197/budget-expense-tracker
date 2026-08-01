@@ -85,7 +85,7 @@ export default async function ReportsPage() {
       </div>
       <article className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
         <h2 className="text-lg font-semibold text-slate-950">6-month trend</h2>
-        <TrendLineChart data={trend} />
+        <TrendLineChart data={trend} currency={currency} />
       </article>
     </section>
   );

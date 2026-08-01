@@ -4,7 +4,8 @@ import { useState, useTransition } from "react";
 import { toast } from "sonner";
 
 import { cancelDebt } from "@/features/debts/actions/debt.actions";
-import { formatCurrency } from "@/lib/utils";
+import { useCurrency } from "@/lib/currencyContext";
+import { formatCurrency, formatCurrencyDetailed } from "@/lib/utils";
 import { PaymentHistoryPanel } from "@/features/debts/components/payment-history-panel";
 import { RecordPaymentModal } from "@/features/debts/components/record-payment-modal";
 import { Badge } from "@/components/ui/badge";
@@ -34,9 +35,13 @@ type DebtCardProps = Readonly<{
     projectedPayoffDate: string;
   } | null;
   onEdit: () => void;
+  currency?: string;
 }>;
 
-export function DebtCard({ debt, projection, onEdit }: DebtCardProps) {
+export function DebtCard({ debt, projection, onEdit, currency: currencyProp }: DebtCardProps) {
+  const { currency: contextCurrency } = useCurrency();
+  const currency = currencyProp || contextCurrency;
+
   const [showHistory, setShowHistory] = useState(false);
   const [showPaymentModal, setShowPaymentModal] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
@@ -60,72 +65,43 @@ export function DebtCard({ debt, projection, onEdit }: DebtCardProps) {
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div className="flex-1">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="text-lg sm:text-xl font-semibold text-slate-950">{debt.name}</h3>
-              <Badge variant={debt.direction === "LOAN" ? "success" : "neutral"}>
-                {debt.direction}
-              </Badge>
-              <Badge
-                variant={
-                  debt.status === "PAID"
-                    ? "success"
-                    : debt.status === "CANCELLED"
-                      ? "neutral"
-                      : "warning"
-                }
-              >
-                {debt.status}
+              <Badge variant={debt.direction === "DEBT" ? "danger" : "success"}>
+                {debt.direction === "DEBT" ? "I Owe" : "Owed to Me"}
               </Badge>
               {isOverdue ? <Badge variant="danger">Overdue</Badge> : null}
-              {isDueSoon ? <Badge variant="warning">Due Soon</Badge> : null}
+              {isDueSoon ? <Badge variant="warning">Due soon</Badge> : null}
+              {debt.status === "PAID" ? <Badge variant="success">Paid off</Badge> : null}
+              {debt.status === "CANCELLED" ? <Badge variant="neutral">Cancelled</Badge> : null}
             </div>
-            <p className="mt-2 text-sm text-slate-600">{debt.counterparty}</p>
-            <p className="mt-2 text-xs text-slate-500">Added by {debt.addedByName}</p>
-            {debt.notes ? (
-              <p className="mt-2 text-sm text-slate-500">{debt.notes}</p>
-            ) : null}
+            <h3 className="mt-2 text-lg font-semibold text-slate-950">{debt.name}</h3>
+            <p className="text-sm text-slate-500">
+              {debt.direction === "DEBT" ? `Pay to ${debt.counterparty}` : `From ${debt.counterparty}`} • Added by {debt.addedByName}
+            </p>
           </div>
-          <div className="flex flex-wrap gap-2 w-full lg:w-auto">
-            <Button
-              onClick={() => setShowPaymentModal(true)}
-              disabled={debt.status !== "ACTIVE"}
-              className="flex-1 sm:flex-none"
-            >
-              Record Payment
-            </Button>
-            <Button variant="secondary" onClick={() => setShowHistory((value) => !value)} className="flex-1 sm:flex-none">
-              {showHistory ? "Hide History" : "View History"}
-            </Button>
-            <Button variant="ghost" onClick={onEdit} className="flex-1 sm:flex-none">
-              Edit
-            </Button>
-            {debt.status === "ACTIVE" ? (
-              <Button variant="ghost" onClick={() => setShowCancelModal(true)} className="flex-1 sm:flex-none">
-                Cancel Debt
-              </Button>
-            ) : null}
-          </div>
+          {debt.status === "ACTIVE" ? (
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+              <Button onClick={() => setShowPaymentModal(true)} className="w-full sm:w-auto">Record payment</Button>
+              <Button variant="secondary" onClick={onEdit} className="w-full sm:w-auto">Edit</Button>
+              <Button variant="ghost" onClick={() => setShowCancelModal(true)} className="w-full sm:w-auto">Cancel position</Button>
+            </div>
+          ) : null}
         </div>
-        {debt.status === "PAID" ? (
-          <div className="mt-4 rounded-2xl bg-emerald-50 p-3 text-sm text-emerald-700">
-            Paid Off
-          </div>
-        ) : null}
         {debt.status === "CANCELLED" ? (
-          <div className="mt-4 rounded-2xl bg-slate-100 p-3 text-sm text-slate-600">
+          <div className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-medium text-amber-800 border border-amber-200/60">
             Cancelled
           </div>
         ) : null}
         <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <p className="text-xs sm:text-sm text-slate-500">Remaining balance</p>
-            <p className="mt-1 text-xl sm:text-2xl font-semibold text-slate-950">
-              {formatCurrency(debt.remainingBalance)}
+            <p className="mt-1 text-xl sm:text-2xl font-semibold text-slate-950 truncate" title={formatCurrencyDetailed(debt.remainingBalance, currency)}>
+              {formatCurrency(debt.remainingBalance, currency)}
             </p>
           </div>
           <div>
             <p className="text-xs sm:text-sm text-slate-500">Principal</p>
-            <p className="mt-1 font-semibold text-slate-950">
-              {formatCurrency(debt.principal)}
+            <p className="mt-1 font-semibold text-slate-950 truncate" title={formatCurrencyDetailed(debt.principal, currency)}>
+              {formatCurrency(debt.principal, currency)}
             </p>
           </div>
           <div>
@@ -138,7 +114,7 @@ export function DebtCard({ debt, projection, onEdit }: DebtCardProps) {
             <p className="text-xs sm:text-sm text-slate-500">Next payment</p>
             <p className="mt-1 font-semibold text-slate-950 text-sm">
               {debt.nextPaymentDate ?? "—"}
-              {debt.installmentAmount ? ` • ${formatCurrency(debt.installmentAmount)}` : ""}
+              {debt.installmentAmount ? ` • ${formatCurrency(debt.installmentAmount, currency)}` : ""}
             </p>
           </div>
         </div>
@@ -150,7 +126,7 @@ export function DebtCard({ debt, projection, onEdit }: DebtCardProps) {
         </div>
         <div className="mt-3 flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600">
           <span>
-            Paid {formatCurrency(debt.amountPaid)} of {formatCurrency(debt.principal)}
+            Paid {formatCurrency(debt.amountPaid, currency)} of {formatCurrency(debt.principal, currency)}
           </span>
           {debt.interestType !== "NONE" ? (
             <span>
