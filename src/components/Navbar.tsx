@@ -11,13 +11,13 @@ type MobileTopNavbarProps = Readonly<{
 
 export function MobileTopNavbar({ onMenuClick }: MobileTopNavbarProps) {
   return (
-    <header className="fixed top-0 inset-x-0 z-50 h-14 bg-white border-b border-slate-200 lg:hidden">
+    <header className="fixed top-0 inset-x-0 z-40 h-14 bg-white border-b border-slate-200 lg:hidden">
       <div className="flex items-center justify-between h-full px-4">
         <div className="flex items-center gap-2">
           <div className="rounded-lg bg-slate-950 p-1.5">
             <AccountBalanceWalletIcon className="h-4 w-4 text-white" />
           </div>
-          <span className="font-semibold text-slate-950">Budget Tracker</span>
+          <span className="font-semibold text-slate-950">Budget Wise</span>
         </div>
         <Button variant="ghost" onClick={onMenuClick}>
           <MenuIcon className="h-5 w-5" />

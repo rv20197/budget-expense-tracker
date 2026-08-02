@@ -16,7 +16,7 @@ export function AuthFormShell({
       <div className="m-auto grid w-full max-w-5xl gap-8 rounded-[32px] border border-white/60 bg-white/70 p-6 shadow-2xl shadow-slate-300/40 backdrop-blur md:grid-cols-[1.1fr_0.9fr] md:p-8">
         <section className="rounded-[28px] bg-slate-950 p-8 text-white">
           <p className="text-sm uppercase tracking-[0.35em] text-slate-300">
-            Budget Tracker
+            Budget Wise
           </p>
           <h1 className="mt-6 max-w-sm text-4xl font-semibold leading-tight">
             Make every rupee visible, intentional, and accountable.

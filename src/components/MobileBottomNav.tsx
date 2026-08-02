@@ -20,7 +20,7 @@ export function MobileBottomNav() {
   const pathname = usePathname();
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 z-50 bg-white/95 backdrop-blur border-t border-slate-200 lg:hidden pb-[env(safe-area-inset-bottom,0px)]">
+    <nav className="fixed bottom-0 inset-x-0 z-40 bg-white/95 backdrop-blur border-t border-slate-200 lg:hidden pb-[env(safe-area-inset-bottom,0px)]">
       <div className="grid grid-cols-4 h-16 max-w-lg mx-auto">
         {BOTTOM_NAV_ITEMS.map((item) => {
           const isActive =

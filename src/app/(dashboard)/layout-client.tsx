@@ -30,7 +30,7 @@ export function DashboardLayoutClient({
               <div className="flex flex-col gap-2 lg:flex-row lg:items-center lg:justify-between">
                 <div>
                   <p className="text-xs uppercase tracking-[0.3em] text-slate-500 lg:text-sm">
-                    Budget Tracker
+                    Budget Wise
                   </p>
                   <h1 className="text-xl font-bold text-slate-950 lg:text-2xl">
                     Welcome back, {userName}
