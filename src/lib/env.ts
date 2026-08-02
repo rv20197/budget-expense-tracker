@@ -18,10 +18,16 @@ const envSchema = z.object({
   OPENAI_API_KEY: z.string().optional(),
 });
 
+const nodeEnv = process.env.NODE_ENV || "development";
+const resolvedDbUrl =
+  nodeEnv === "production"
+    ? process.env.PROD_DATABASE_URL || process.env.DATABASE_URL
+    : process.env.LOCAL_DATABASE_URL || process.env.DATABASE_URL;
+
 export const env = envSchema.parse({
   NODE_ENV: process.env.NODE_ENV,
   APP_URL: process.env.APP_URL,
-  DATABASE_URL: process.env.DATABASE_URL,
+  DATABASE_URL: resolvedDbUrl,
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
   JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
   ACCESS_TOKEN_EXPIRES_IN: process.env.ACCESS_TOKEN_EXPIRES_IN,
