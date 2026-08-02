@@ -39,6 +39,34 @@ export function formatCurrencyDetailed(value: Decimal.Value, currency?: string) 
   return `${config.code} - ${formatCurrency(value, currency)}`;
 }
 
+export function formatCompactCurrency(value: Decimal.Value, currency?: string) {
+  const code = currency || getClientCurrency();
+  const config = SUPPORTED_CURRENCIES[code] || SUPPORTED_CURRENCIES.INR;
+  const numericValue = toDecimal(value).toNumber();
+
+  if (isNaN(numericValue) || numericValue === 0) {
+    const space = config.symbol.length > 1 ? " " : "";
+    return `${config.symbol}${space}0`;
+  }
+
+  try {
+    const formattedNumber = new Intl.NumberFormat(
+      config.system === "indian" ? "en-IN" : "en-US",
+      {
+        notation: "compact",
+        compactDisplay: "short",
+        maximumFractionDigits: 1,
+      },
+    ).format(numericValue);
+
+    const space = config.symbol.length > 1 ? " " : "";
+    return `${config.symbol}${space}${formattedNumber}`;
+  } catch {
+    const space = config.symbol.length > 1 ? " " : "";
+    return `${config.symbol}${space}${numericValue}`;
+  }
+}
+
 export function formatDate(value: Date | string) {
   const date = value instanceof Date ? value : new Date(value);
   return new Intl.DateTimeFormat("en-US", {

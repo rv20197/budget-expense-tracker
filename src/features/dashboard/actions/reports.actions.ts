@@ -62,7 +62,7 @@ export async function getMonthlySummary(
       .innerJoin(categories, eq(categories.id, transactions.categoryId))
       .where(eq(transactions.householdId, context.householdId))
       .orderBy(desc(transactions.transactionDate), desc(transactions.createdAt))
-      .limit(5),
+      .limit(50),
   ]);
 
   return {

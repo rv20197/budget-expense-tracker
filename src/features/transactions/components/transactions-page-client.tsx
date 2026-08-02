@@ -33,7 +33,7 @@ type TransactionsPageClientProps = Readonly<{
   pageSize: number;
   sortBy?: "description" | "categoryName" | "transactionDate" | "amount";
   sortOrder?: "asc" | "desc";
-  groupBy?: "description";
+  groupBy?: "category";
   exportHref: string;
 }>;
 
@@ -64,7 +64,7 @@ export function TransactionsPageClient({
     router.push(`/transactions?${params.toString()}`);
   };
 
-  const handleGroupBy = (value: "description" | null) => {
+  const handleGroupBy = (value: "category" | null) => {
     const params = new URLSearchParams(searchParams);
     if (value) {
       params.set("groupBy", value);
@@ -105,14 +105,14 @@ export function TransactionsPageClient({
         </div>
         <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:flex-wrap">
           <button
-            onClick={() => handleGroupBy(groupBy === "description" ? null : "description")}
+            onClick={() => handleGroupBy(groupBy === "category" ? null : "category")}
             className={`w-full sm:w-auto inline-flex items-center justify-center rounded-2xl px-4 py-2.5 text-sm font-medium transition min-h-[44px] ${
-              groupBy === "description"
+              groupBy === "category"
                 ? "bg-slate-950 text-white hover:bg-slate-800"
                 : "bg-white text-slate-900 ring-1 ring-slate-200 hover:bg-slate-50"
             }`}
           >
-            Group by Description
+            Group by Category
           </button>
           <a
             href={exportHref}

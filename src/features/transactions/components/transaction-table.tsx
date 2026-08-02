@@ -66,28 +66,35 @@ export type TransactionItem = {
 };
 
 type TransactionGroup = {
-  description: string;
+  categoryName: string;
+  categoryColor: string;
   items: TransactionItem[];
   totalAmount: number;
   count: number;
 };
 
 function buildGroups(items: TransactionItem[]): TransactionGroup[] {
-  const map = new Map<string, TransactionItem[]>();
+  const map = new Map<string, { categoryName: string; categoryColor: string; items: TransactionItem[] }>();
   for (const item of items) {
-    const existing = map.get(item.description) ?? [];
-    existing.push(item);
-    map.set(item.description, existing);
+    const key = item.categoryName;
+    const existing = map.get(key) ?? {
+      categoryName: item.categoryName,
+      categoryColor: item.categoryColor,
+      items: [],
+    };
+    existing.items.push(item);
+    map.set(key, existing);
   }
-  return Array.from(map.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .map(([description, groupItems]) => ({
-      description,
-      items: [...groupItems].sort(
+  return Array.from(map.values())
+    .sort((a, b) => a.categoryName.localeCompare(b.categoryName))
+    .map((group) => ({
+      categoryName: group.categoryName,
+      categoryColor: group.categoryColor,
+      items: [...group.items].sort(
         (a, b) => new Date(b.transactionDate).getTime() - new Date(a.transactionDate).getTime(),
       ),
-      totalAmount: groupItems.reduce((sum, t) => sum + parseFloat(t.amount), 0),
-      count: groupItems.length,
+      totalAmount: group.items.reduce((sum, t) => sum + parseFloat(t.amount), 0),
+      count: group.items.length,
     }));
 }
 
@@ -99,7 +106,7 @@ type TransactionTableProps = Readonly<{
   sortBy?: "description" | "categoryName" | "transactionDate" | "amount";
   sortOrder?: "asc" | "desc";
   onSort: (column: "description" | "categoryName" | "transactionDate" | "amount") => void;
-  groupBy?: "description";
+  groupBy?: "category";
 }>;
 
 export function TransactionTable({
@@ -125,7 +132,7 @@ export function TransactionTable({
     );
   }
 
-  if (groupBy === "description") {
+  if (groupBy === "category") {
     const groups = buildGroups(items);
     const allGroupIds = items.map((i) => i.id);
 
@@ -134,10 +141,13 @@ export function TransactionTable({
         {/* Mobile grouped layout */}
         <div className="block md:hidden space-y-4">
           {groups.map((group) => (
-            <div key={group.description} className="rounded-[20px] border border-slate-200 bg-white overflow-hidden">
+            <div key={group.categoryName} className="rounded-[20px] border border-slate-200 bg-white overflow-hidden">
               <div className="flex items-center justify-between bg-slate-50 px-4 py-3 border-b border-slate-200">
                 <div>
-                  <p className="font-semibold text-slate-900 text-sm">{group.description}</p>
+                  <div className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: group.categoryColor }} />
+                    <p className="font-semibold text-slate-900 text-sm">{group.categoryName}</p>
+                  </div>
                   <p className="text-xs text-slate-500 mt-0.5">{group.count} transaction{group.count !== 1 ? "s" : ""}</p>
                 </div>
                 <span className="font-semibold text-slate-900 text-sm">
@@ -149,7 +159,7 @@ export function TransactionTable({
                   const isSelected = selectedIds.includes(item.id);
                   return (
                     <div key={item.id} className="flex items-center justify-between px-4 py-3">
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-start gap-3 min-w-0 flex-1">
                         <input
                           type="checkbox"
                           checked={isSelected}
@@ -160,16 +170,17 @@ export function TransactionTable({
                                 : selectedIds.filter((id) => id !== item.id),
                             )
                           }
+                          className="mt-1 shrink-0"
                         />
-                        <div>
-                          <Badge variant={item.type === "income" ? "success" : "neutral"}>
-                            <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.categoryColor }} />
-                            {item.categoryName}
-                          </Badge>
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium text-slate-900 text-sm break-words">{item.description}</p>
+                          {item.notes && (
+                            <p className="mt-0.5 text-xs text-slate-500 break-words">{item.notes}</p>
+                          )}
                           <p className="text-xs text-slate-500 mt-1">{item.transactionDate}</p>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2 shrink-0">
                         <span className={item.type === "income" ? "font-semibold text-emerald-600 text-sm" : "font-semibold text-slate-900 text-sm"}>
                           {item.type === "income" ? "+" : "-"}{formatCurrency(item.amount, currency)}
                         </span>
@@ -200,7 +211,7 @@ export function TransactionTable({
                     onChange={(e) => onSelectionChange(e.target.checked ? allGroupIds : [])}
                   />
                 </th>
-                <th className="px-4 py-3">Category</th>
+                <th className="px-4 py-3">Description</th>
                 <th className="px-4 py-3">Date</th>
                 <th className="px-4 py-3">Amount</th>
                 <th className="px-4 py-3 text-right">Actions</th>
@@ -208,12 +219,13 @@ export function TransactionTable({
             </thead>
             <tbody className="divide-y divide-slate-200 bg-white">
               {groups.map((group) => (
-                <Fragment key={`group-${group.description}`}>
+                <Fragment key={`group-${group.categoryName}`}>
                   <tr className="bg-slate-50">
                     <td colSpan={5} className="px-4 py-2.5">
                       <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <span className="font-semibold text-slate-900">{group.description}</span>
+                        <div className="flex items-center gap-2.5">
+                          <span className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: group.categoryColor }} />
+                          <span className="font-semibold text-slate-900">{group.categoryName}</span>
                           <span className="rounded-full bg-slate-200 px-2 py-0.5 text-xs text-slate-600">
                             {group.count} transaction{group.count !== 1 ? "s" : ""}
                           </span>
@@ -242,10 +254,13 @@ export function TransactionTable({
                           />
                         </td>
                         <td className="px-4 py-3 align-top">
-                          <Badge variant={item.type === "income" ? "success" : "neutral"}>
-                            <span className="mr-2 inline-block h-2 w-2 rounded-full" style={{ backgroundColor: item.categoryColor }} />
-                            {item.categoryName}
-                          </Badge>
+                          <p className="font-medium text-slate-900">{item.description}</p>
+                          {item.notes ? (
+                            <p className="mt-1 text-xs text-slate-500">{item.notes}</p>
+                          ) : null}
+                          <p className="mt-2 text-xs text-slate-500">
+                            Added by {item.addedByName}
+                          </p>
                         </td>
                         <td className="px-4 py-3 align-top text-slate-600">{item.transactionDate}</td>
                         <td className="px-4 py-3 align-top">

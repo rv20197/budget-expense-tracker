@@ -28,7 +28,7 @@ export default async function TransactionsPage({
       ? params.sortOrder as "asc" | "desc"
       : undefined;
   const groupBy =
-    params.groupBy === "description" ? "description" as const : undefined;
+    params.groupBy === "category" ? "category" as const : undefined;
 
   const [categories, transactionData] = await Promise.all([
     getCategories(),

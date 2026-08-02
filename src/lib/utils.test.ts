@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { endOfMonth, formatCurrency, formatCurrencyDetailed, formatMonthYear, startOfMonth } from "./utils";
+import { endOfMonth, formatCompactCurrency, formatCurrency, formatCurrencyDetailed, formatMonthYear, startOfMonth } from "./utils";
 
 describe("Date utilities", () => {
   it("returns the first day of the month as UTC Date", () => {
@@ -59,5 +59,21 @@ describe("formatCurrencyDetailed", () => {
 
   it("formats with code - symbol amount for INR", () => {
     expect(formatCurrencyDetailed(241815, "INR")).toBe("INR - ₹2,41,815.00");
+  });
+});
+
+describe("formatCompactCurrency", () => {
+  it("formats zero with symbol", () => {
+    expect(formatCompactCurrency(0, "INR")).toBe("₹0");
+    expect(formatCompactCurrency(0, "USD")).toBe("$0");
+  });
+
+  it("formats compact values for USD", () => {
+    expect(formatCompactCurrency(15000, "USD")).toBe("$15K");
+    expect(formatCompactCurrency(1000000, "USD")).toBe("$1M");
+  });
+
+  it("formats compact values for INR", () => {
+    expect(formatCompactCurrency(1000, "INR")).toBe("₹1K");
   });
 });

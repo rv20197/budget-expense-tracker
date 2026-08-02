@@ -1,8 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
-import { CategoryDonutChart } from "@/features/dashboard/components/category-donut-chart";
-import { SummaryBarChart } from "@/features/dashboard/components/summary-bar-chart";
+import { DashboardInteractiveSection } from "@/features/dashboard/components/dashboard-interactive-section";
 import { getDebtSummary } from "@/features/debts/actions/debt.actions";
 import { getCategoryBreakdown, getMonthlySummary, getTrend } from "@/features/dashboard/actions/reports.actions";
 import { getSession } from "@/lib/auth/session";
@@ -85,40 +84,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           </h2>
         </article>
       </div>
-      <div className="grid gap-6 xl:grid-cols-2">
-        <article className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="text-base font-semibold text-slate-950 sm:text-lg">Income vs expense</h3>
-          <div className="mt-4 w-full overflow-x-auto">
-            <SummaryBarChart data={trend} currency={currency} />
-          </div>
-        </article>
-        <article className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="text-base font-semibold text-slate-950 sm:text-lg">Expense by category</h3>
-          <div className="mt-4 w-full overflow-x-auto">
-            <CategoryDonutChart data={breakdown} currency={currency} />
-          </div>
-        </article>
-      </div>
-      <div>
-        <article className="min-w-0 rounded-[28px] border border-slate-200 bg-white p-4 sm:p-5">
-          <h3 className="text-base font-semibold text-slate-950 sm:text-lg">Recent transactions</h3>
-          <div className="mt-4 grid gap-3">
-            {summary.recentTransactions.map((item) => (
-              <div key={item.id} className="flex min-w-0 items-center justify-between rounded-2xl bg-slate-50 p-3 sm:p-4">
-                <div className="min-w-0 flex-1">
-                  <p className="font-medium text-slate-950 truncate">{item.categoryName}</p>
-                  <p className="text-xs text-slate-500 truncate">
-                    {item.transactionDate} • {item.description}
-                  </p>
-                </div>
-                <span className="font-semibold text-slate-950 ml-2 shrink-0 whitespace-nowrap text-sm sm:text-base" title={formatCurrencyDetailed(item.amount, currency)}>
-                  {formatCurrency(item.amount, currency)}
-                </span>
-              </div>
-            ))}
-          </div>
-        </article>
-      </div>
+      <DashboardInteractiveSection
+        trend={trend}
+        breakdown={breakdown}
+        recentTransactions={summary.recentTransactions}
+        currency={currency}
+      />
       <section className="grid gap-4">
         <div>
           <h3 className="text-base font-semibold text-slate-950 sm:text-lg">Debt Overview</h3>
