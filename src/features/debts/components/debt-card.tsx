@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
+import HistoryIcon from "@mui/icons-material/History";
 
 import { cancelDebt } from "@/features/debts/actions/debt.actions";
 import { useCurrency } from "@/lib/currencyContext";
@@ -39,6 +41,7 @@ type DebtCardProps = Readonly<{
 }>;
 
 export function DebtCard({ debt, projection, onEdit, currency: currencyProp }: DebtCardProps) {
+  const router = useRouter();
   const { currency: contextCurrency } = useCurrency();
   const currency = currencyProp || contextCurrency;
 
@@ -78,13 +81,25 @@ export function DebtCard({ debt, projection, onEdit, currency: currencyProp }: D
               {debt.direction === "DEBT" ? `Pay to ${debt.counterparty}` : `From ${debt.counterparty}`} • Added by {debt.addedByName}
             </p>
           </div>
-          {debt.status === "ACTIVE" ? (
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-              <Button onClick={() => setShowPaymentModal(true)} className="w-full sm:w-auto">Record payment</Button>
-              <Button variant="secondary" onClick={onEdit} className="w-full sm:w-auto">Edit</Button>
+          <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+            {debt.status === "ACTIVE" ? (
+              <>
+                <Button onClick={() => setShowPaymentModal(true)} className="w-full sm:w-auto">Record payment</Button>
+                <Button variant="secondary" onClick={onEdit} className="w-full sm:w-auto">Edit</Button>
+              </>
+            ) : null}
+            <Button
+              variant={showHistory ? "primary" : "secondary"}
+              onClick={() => setShowHistory((prev) => !prev)}
+              className="w-full sm:w-auto inline-flex items-center justify-center gap-1.5"
+            >
+              <HistoryIcon className="h-4 w-4" />
+              {showHistory ? "Hide History" : "Payment History"}
+            </Button>
+            {debt.status === "ACTIVE" ? (
               <Button variant="ghost" onClick={() => setShowCancelModal(true)} className="w-full sm:w-auto">Cancel position</Button>
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </div>
         {debt.status === "CANCELLED" ? (
           <div className="mt-3 rounded-2xl bg-amber-50 p-3 text-xs font-medium text-amber-800 border border-amber-200/60">
@@ -124,26 +139,43 @@ export function DebtCard({ debt, projection, onEdit, currency: currencyProp }: D
             style={{ width: `${Math.min(progress, 100)}%` }}
           />
         </div>
-        <div className="mt-3 flex flex-wrap gap-2 sm:gap-4 text-xs sm:text-sm text-slate-600">
-          <span>
-            Paid {formatCurrency(debt.amountPaid, currency)} of {formatCurrency(debt.principal, currency)}
-          </span>
-          {debt.interestType !== "NONE" ? (
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs sm:text-sm text-slate-600">
+          <div className="flex flex-wrap gap-2 sm:gap-4">
             <span>
-              {debt.interestRate}% {debt.interestType}
+              Paid {formatCurrency(debt.amountPaid, currency)} of {formatCurrency(debt.principal, currency)}
             </span>
-          ) : null}
-          {projection ? (
-            <span>
-              Estimated payoff: {projection.projectedPayoffDate}
-            </span>
-          ) : null}
+            {debt.interestType !== "NONE" ? (
+              <span>
+                {debt.interestRate}% {debt.interestType}
+              </span>
+            ) : null}
+            {projection ? (
+              <span>
+                Estimated payoff: {projection.projectedPayoffDate}
+              </span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => setShowHistory((prev) => !prev)}
+            className="font-medium text-slate-900 hover:underline inline-flex items-center gap-1 cursor-pointer"
+          >
+            <HistoryIcon className="h-4 w-4 text-slate-500" />
+            {showHistory ? "Hide History" : "View History"}
+          </button>
         </div>
         {showHistory ? (
-          <div className="mt-5">
+          <div className="mt-5 border-t border-slate-100 pt-5">
+            <div className="flex items-center justify-between mb-3">
+              <h4 className="font-semibold text-sm text-slate-950 flex items-center gap-2">
+                <HistoryIcon className="h-4 w-4 text-slate-600" />
+                Payment History for {debt.name}
+              </h4>
+            </div>
             <PaymentHistoryPanel
               debtId={debt.id}
               amountPaid={debt.amountPaid}
+              onPaymentDeleted={() => router.refresh()}
             />
           </div>
         ) : null}
@@ -153,6 +185,10 @@ export function DebtCard({ debt, projection, onEdit, currency: currencyProp }: D
         debtId={debt.id}
         debtName={debt.name}
         onClose={() => setShowPaymentModal(false)}
+        onSuccess={() => {
+          setShowHistory(true);
+          router.refresh();
+        }}
       />
       <Modal
         open={showCancelModal}

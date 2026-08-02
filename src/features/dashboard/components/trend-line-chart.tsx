@@ -65,7 +65,7 @@ export function TrendLineChart({ data, currency: currencyProp }: TrendLineChartP
       </div>
 
       <div className="h-80 min-h-80 w-full min-w-0">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1}>
           <LineChart data={data} margin={{ top: 12, right: 16, left: 4, bottom: 8 }}>
             <CartesianGrid strokeDasharray="4 4" stroke="#f1f5f9" vertical={false} />
             <XAxis

@@ -52,7 +52,7 @@ export function CategoryDonutChart({
   return (
     <div className="flex flex-col gap-4">
       <div className="h-64 min-h-64 w-full min-w-0 sm:h-80 sm:min-h-80">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1}>
           <PieChart>
             <Pie
               data={data}
@@ -100,11 +100,10 @@ export function CategoryDonutChart({
                 onClick={() =>
                   onSelectCategory?.(isSelected ? null : item.categoryName)
                 }
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer ${
-                  isSelected
+                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition cursor-pointer ${isSelected
                     ? "bg-slate-900 text-white shadow-xs ring-2 ring-slate-900 ring-offset-1"
                     : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-                }`}
+                  }`}
               >
                 <span
                   className="h-2.5 w-2.5 rounded-full shrink-0"

@@ -65,7 +65,7 @@ export function SummaryBarChart({ data, currency: currencyProp }: SummaryBarChar
       </div>
 
       <div className="h-64 min-h-64 w-full min-w-0 sm:h-80 sm:min-h-80">
-        <ResponsiveContainer width="100%" height="100%">
+        <ResponsiveContainer width="100%" height="100%" minWidth={1}>
           <BarChart data={data} margin={{ top: 12, right: 16, left: 4, bottom: 8 }}>
             <defs>
               <linearGradient id="incomeBarGrad" x1="0" y1="0" x2="0" y2="1">

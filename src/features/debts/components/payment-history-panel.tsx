@@ -16,11 +16,13 @@ import { Modal } from "@/components/ui/modal";
 type PaymentHistoryPanelProps = Readonly<{
   debtId: string;
   amountPaid: string;
+  onPaymentDeleted?: () => void;
 }>;
 
 export function PaymentHistoryPanel({
   debtId,
   amountPaid,
+  onPaymentDeleted,
 }: PaymentHistoryPanelProps) {
   const { currency } = useCurrency();
   const [page, setPage] = useState<PaymentHistoryPage | null>(null);
@@ -153,6 +155,7 @@ export function PaymentHistoryPanel({
 
                 toast.success("Payment deleted.");
                 setSelectedPaymentId(null);
+                onPaymentDeleted?.();
                 // Reload current page; if it's now empty, go back one page.
                 const reloadPage =
                   page.items.length === 1 && currentPage > 1

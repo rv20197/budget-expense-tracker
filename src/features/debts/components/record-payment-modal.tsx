@@ -19,6 +19,7 @@ type RecordPaymentModalProps = Readonly<{
   debtId: string;
   debtName: string;
   onClose: () => void;
+  onSuccess?: () => void;
 }>;
 
 export function RecordPaymentModal({
@@ -26,6 +27,7 @@ export function RecordPaymentModal({
   debtId,
   debtName,
   onClose,
+  onSuccess,
 }: RecordPaymentModalProps) {
   const [isPending, startTransition] = useTransition();
   const {
@@ -63,6 +65,7 @@ export function RecordPaymentModal({
             toast.success("Payment recorded.");
             reset();
             onClose();
+            onSuccess?.();
           }),
         )}
       >
