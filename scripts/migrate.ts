@@ -10,34 +10,38 @@ async function createDatabaseIfNotExists(connectionString: string) {
     throw new Error("DATABASE_URL must be set.");
   }
 
-  const url = new URL(connectionString);
-  const databaseName = url.pathname?.slice(1);
-
-  if (!databaseName) {
-    throw new Error("DATABASE_URL must include a database name.");
-  }
-
-  const adminUrl = new URL(connectionString);
-  adminUrl.pathname = "/postgres";
-
-  const adminPool = new Pool({ connectionString: adminUrl.toString() });
-
   try {
-    const client = await adminPool.connect();
+    const url = new URL(connectionString);
+    const databaseName = url.pathname?.slice(1);
+
+    if (!databaseName) {
+      return;
+    }
+
+    const adminUrl = new URL(connectionString);
+    adminUrl.pathname = "/postgres";
+
+    const adminPool = new Pool({ connectionString: adminUrl.toString() });
+
     try {
-      await client.query(`CREATE DATABASE "${databaseName}"`);
-      logger.info("MigrateScript", `Created database "${databaseName}"`);
-    } catch (error: any) {
-      if (error.code === "42P04") {
-        logger.info("MigrateScript", `Database "${databaseName}" already exists`);
-      } else {
-        throw error;
+      const client = await adminPool.connect();
+      try {
+        await client.query(`CREATE DATABASE "${databaseName}"`);
+        logger.info("MigrateScript", `Created database "${databaseName}"`);
+      } catch (error: any) {
+        if (error.code === "42P04") {
+          logger.info("MigrateScript", `Database "${databaseName}" already exists`);
+        } else {
+          logger.warn("MigrateScript", `Admin database check skipped: ${error.message}`);
+        }
+      } finally {
+        client.release();
       }
     } finally {
-      client.release();
+      await adminPool.end();
     }
-  } finally {
-    await adminPool.end();
+  } catch (error: any) {
+    logger.warn("MigrateScript", `Skipping admin database check: ${error.message}`);
   }
 }
 
