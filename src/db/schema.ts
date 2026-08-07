@@ -327,6 +327,9 @@ export const debtPayments = pgTable(
     debtId: uuid("debt_id")
       .notNull()
       .references(() => debts.id, { onDelete: "cascade" }),
+    transactionId: uuid("transaction_id").references(() => transactions.id, {
+      onDelete: "set null",
+    }),
     createdBy: uuid("created_by")
       .notNull()
       .references(() => users.id, { onDelete: "cascade" }),
@@ -339,6 +342,7 @@ export const debtPayments = pgTable(
   },
   (table) => [
     index("debt_payments_debt_id_idx").on(table.debtId),
+    index("debt_payments_transaction_id_idx").on(table.transactionId),
     index("debt_payments_created_by_idx").on(table.createdBy),
     index("debt_payments_paid_on_idx").on(table.paidOn),
   ],

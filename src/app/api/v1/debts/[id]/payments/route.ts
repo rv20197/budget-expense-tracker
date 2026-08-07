@@ -3,7 +3,7 @@ import Decimal from "decimal.js";
 import { ZodError } from "zod";
 
 import { db } from "@/db";
-import { debtPayments, debts } from "@/db/schema";
+import { debts } from "@/db/schema";
 import {
   badRequest,
   notFound,
@@ -12,9 +12,8 @@ import {
   unauthorized,
 } from "@/lib/api-response";
 import { getSessionFromRequest } from "@/lib/auth/getSessionFromRequest";
-import { addMonthsClamped, toMoneyString } from "@/lib/utils";
 import { recordPaymentSchema } from "@/features/debts/schemas/debt.schemas";
-import { calculateNextPaymentDates } from "@/features/debts/lib/dates";
+import { recordDebtPaymentInDb } from "@/features/debts/lib/payment-transaction";
 
 export async function POST(
   request: Request,
@@ -54,43 +53,13 @@ export async function POST(
       });
     }
 
-    const nextRemainingBalance = Decimal.max(
-      remainingBalance.minus(paymentAmount),
-      0,
-    );
-    const isFullyPaid = nextRemainingBalance.lte(0);
-    const nextStatus = isFullyPaid ? "PAID" : debt.status;
-    const { dueDate: nextDueDate, nextPaymentDate } = calculateNextPaymentDates(
-      {
-        dueDate: debt.dueDate,
-        nextPaymentDate: debt.nextPaymentDate,
-      },
-      isFullyPaid,
-    );
-
-    const createdPaymentId = await db.transaction(async (tx) => {
-      const [payment] = await tx
-        .insert(debtPayments)
-        .values({
-          amount: toMoneyString(paymentAmount),
-          createdBy: userId,
-          debtId: debt.id,
-          note: payload.note || null,
-          paidOn: new Date(payload.paidOn),
-        })
-        .returning({ id: debtPayments.id });
-
-      await tx
-        .update(debts)
-        .set({
-          dueDate: nextDueDate,
-          nextPaymentDate,
-          remainingBalance: toMoneyString(nextRemainingBalance),
-          status: nextStatus,
-        })
-        .where(eq(debts.id, debt.id));
-
-      return payment.id;
+    const createdPaymentId = await recordDebtPaymentInDb({
+      debt,
+      userId,
+      householdId,
+      paymentAmount,
+      paidOn: payload.paidOn,
+      note: payload.note,
     });
 
     return ok({ id: createdPaymentId }, 201);

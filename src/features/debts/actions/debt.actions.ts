@@ -7,12 +7,13 @@ import { ZodError } from "zod";
 
 import { unexpectedError, validationError } from "@/lib/action-helpers";
 import { db } from "@/db";
-import { debtPayments, debts, users } from "@/db/schema";
+import { debtPayments, debts, transactions, users } from "@/db/schema";
 import { getAuthContext } from "@/lib/auth/getUser";
 import type { ActionResult } from "@/lib/types/actions";
 import { addMonthsClamped, getDateString, toMoneyString } from "@/lib/utils";
 import { calculatePayoffMonths } from "@/features/debts/lib/projection";
 import { calculateNextPaymentDates } from "@/features/debts/lib/dates";
+import { recordDebtPaymentInDb } from "@/features/debts/lib/payment-transaction";
 import {
   createDebtSchema,
   recordPaymentSchema,
@@ -26,6 +27,8 @@ import { logger } from "@/lib/logger";
 function revalidateDebtPaths() {
   revalidatePath("/debt");
   revalidatePath("/dashboard");
+  revalidatePath("/transactions");
+  revalidatePath("/reports");
 }
 
 function decimal(value: Decimal.Value) {
@@ -272,48 +275,18 @@ export async function recordPayment(
       };
     }
 
-    const nextRemainingBalance = Decimal.max(
-      remainingBalance.minus(paymentAmount),
-      0,
-    );
-    const isFullyPaid = nextRemainingBalance.lte(0);
-    const nextStatus = isFullyPaid ? "PAID" : debt.status;
-    const { dueDate: nextDueDate, nextPaymentDate } = calculateNextPaymentDates(
-      {
-        dueDate: debt.dueDate,
-        nextPaymentDate: debt.nextPaymentDate,
-      },
-      isFullyPaid,
-    );
-
-    const createdPaymentId = await db.transaction(async (tx) => {
-      const [payment] = await tx
-        .insert(debtPayments)
-        .values({
-          amount: toMoneyString(paymentAmount),
-          createdBy: userId,
-          debtId: debt.id,
-          note: payload.note || null,
-          paidOn: new Date(payload.paidOn),
-        })
-        .returning({ id: debtPayments.id });
-
-      await tx
-        .update(debts)
-        .set({
-          dueDate: nextDueDate,
-          nextPaymentDate,
-          remainingBalance: toMoneyString(nextRemainingBalance),
-          status: nextStatus,
-        })
-        .where(eq(debts.id, debt.id));
-
-      return payment.id;
+    const createdPaymentId = await recordDebtPaymentInDb({
+      debt,
+      userId,
+      householdId,
+      paymentAmount,
+      paidOn: payload.paidOn,
+      note: payload.note,
     });
 
     revalidateDebtPaths();
 
-    logger.info("DebtActions", `Recorded payment ${createdPaymentId} for debt ${debtId}. Status: ${nextStatus}, NextDueDate: ${nextDueDate}`);
+    logger.info("DebtActions", `Recorded payment ${createdPaymentId} for debt ${debtId}.`);
     return { success: true, data: { id: createdPaymentId } };
   } catch (error) {
     logger.error("DebtActions", `Error recording payment for debt: ${debtId}`, {
@@ -366,28 +339,63 @@ export async function deletePayment(
     return { success: false, error: "Unauthorized." };
   }
 
-  const [payment] = await db
-    .select({
-      debtId: debtPayments.debtId,
-      id: debtPayments.id,
-    })
-    .from(debtPayments)
-    .innerJoin(debts, eq(debts.id, debtPayments.debtId))
-    .where(
-      and(
-        eq(debtPayments.id, paymentId),
-        eq(debts.householdId, auth.householdId),
-      ),
-    )
-    .limit(1);
+  let payment: { id: string; debtId: string; transactionId?: string | null } | undefined;
+  try {
+    const [found] = await db
+      .select({
+        debtId: debtPayments.debtId,
+        id: debtPayments.id,
+        transactionId: debtPayments.transactionId,
+      })
+      .from(debtPayments)
+      .innerJoin(debts, eq(debts.id, debtPayments.debtId))
+      .where(
+        and(
+          eq(debtPayments.id, paymentId),
+          eq(debts.householdId, auth.householdId),
+        ),
+      )
+      .limit(1);
+    payment = found;
+  } catch (err: any) {
+    if (err?.code === "42703" || String(err?.message || "").includes("transaction_id")) {
+      const [found] = await db
+        .select({
+          debtId: debtPayments.debtId,
+          id: debtPayments.id,
+        })
+        .from(debtPayments)
+        .innerJoin(debts, eq(debts.id, debtPayments.debtId))
+        .where(
+          and(
+            eq(debtPayments.id, paymentId),
+            eq(debts.householdId, auth.householdId),
+          ),
+        )
+        .limit(1);
+      payment = found;
+    } else {
+      throw err;
+    }
+  }
 
   if (!payment) {
     logger.warn("DebtActions", `Payment not found for deletion: ${paymentId}`);
     return { success: false, error: "Payment not found." };
   }
 
+  const paymentToClean = payment;
+
   const result = await db.transaction(async (tx) => {
     await tx.delete(debtPayments).where(eq(debtPayments.id, paymentId));
+
+    if (paymentToClean.transactionId) {
+      try {
+        await tx.delete(transactions).where(eq(transactions.id, paymentToClean.transactionId));
+      } catch {
+        // Ignore deletion error if transaction was already removed
+      }
+    }
 
     const [debt] = await tx
       .select()

@@ -50,6 +50,13 @@
       "when": 1775396049000,
       "tag": "0006_add_user_currency",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1775396050000,
+      "tag": "0007_add_transaction_id_to_debt_payments",
+      "breakpoints": true
     }
   ]
 }
